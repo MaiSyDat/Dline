@@ -19,19 +19,23 @@ export async function POST(req: Request) {
 
     const { users } = await getCollections();
     
-    // Tìm user theo email (case-insensitive)
-    const user = await users.findOne({ 
-      email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') }
-    });
+    // Tìm user theo email (thử exact match trước)
+    let user = await users.findOne({ email: normalizedEmail });
+    
+    // Nếu không tìm thấy, thử case-insensitive
+    if (!user) {
+      const allUsers = await users.find({}).toArray();
+      user = allUsers.find(u => u.email?.toLowerCase().trim() === normalizedEmail);
+    }
 
     if (!user) {
-      console.log('User not found:', normalizedEmail);
+      console.log('User not found for email:', normalizedEmail);
       return NextResponse.json({ ok: false, error: 'Sai thông tin đăng nhập' }, { status: 401 });
     }
 
     // So sánh password
     if (user.password !== normalizedPassword) {
-      console.log('Password mismatch for:', normalizedEmail);
+      console.log('Password mismatch. Expected:', user.password, 'Got:', normalizedPassword);
       return NextResponse.json({ ok: false, error: 'Sai thông tin đăng nhập' }, { status: 401 });
     }
 
