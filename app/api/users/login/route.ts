@@ -19,10 +19,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Sai thông tin đăng nhập' }, { status: 401 });
     }
 
-    return NextResponse.json({ ok: true, data: user });
+    // Không trả về password
+    const { password: _, ...userWithoutPassword } = user;
+    return NextResponse.json({ ok: true, data: userWithoutPassword });
   } catch (error) {
+    console.error('Login error:', error);
     const message = error instanceof Error ? error.message : 'Không thể đăng nhập';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const errorDetails = process.env.NODE_ENV === 'development' 
+      ? { message, stack: error instanceof Error ? error.stack : undefined }
+      : { message: 'Lỗi server. Vui lòng thử lại sau.' };
+    return NextResponse.json({ ok: false, error: message, details: errorDetails }, { status: 500 });
   }
 }
 

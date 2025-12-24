@@ -21,16 +21,17 @@ let cachedCollections: {
 
 async function getClient() {
   if (!uri) {
-    throw new Error('DATABASE_URL chưa được cấu hình cho MongoDB.');
+    throw new Error('DATABASE_URL chưa được cấu hình cho MongoDB. Vui lòng kiểm tra environment variables trên Vercel.');
   }
 
   // Sử dụng global cache cho serverless (Vercel)
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
     if (!global._mongoClientPromise) {
       client = new MongoClient(uri, {
         maxPoolSize: 10,
-        serverSelectionTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 10000,
         socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000,
       });
       global._mongoClientPromise = client.connect();
     }
@@ -39,7 +40,10 @@ async function getClient() {
 
   // Development: reuse connection
   if (clientPromise) return clientPromise;
-  client = new MongoClient(uri);
+  client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  });
   clientPromise = client.connect();
   return clientPromise;
 }
@@ -66,15 +70,23 @@ export async function ensureCollections() {
 }
 
 export async function getCollections() {
-  if (cachedCollections) return cachedCollections;
-  const db = await getDb();
-  await ensureCollections();
-  cachedCollections = {
-    users: db.collection<User>('users'),
-    projects: db.collection<Project>('projects'),
-    tasks: db.collection<Task>('tasks')
-  };
-  return cachedCollections;
+  try {
+    if (cachedCollections) return cachedCollections;
+    const db = await getDb();
+    await ensureCollections();
+    cachedCollections = {
+      users: db.collection<User>('users'),
+      projects: db.collection<Project>('projects'),
+      tasks: db.collection<Task>('tasks')
+    };
+    return cachedCollections;
+  } catch (error) {
+    console.error('getCollections error:', error);
+    // Reset cache on error để retry
+    cachedCollections = null;
+    cachedDb = null;
+    throw error;
+  }
 }
 
 export async function pingDb() {
