@@ -22,90 +22,21 @@ import {
 } from '@heroicons/react/24/outline';
 import { Project, Task, TaskPriority, TaskStatus, User, UserRole } from '@/types';
 
-const fetchJson = async <T,>(url: string, options?: RequestInit): Promise<T> => {
-  const res = await fetch(url, options);
-  const data = await res.json();
-  if (!res.ok || data?.ok === false) {
-    const message = data?.error || res.statusText;
-    throw new Error(message);
-  }
-  return data;
-};
+// UI Components - Import từ thư mục ui
+import { Loading } from '@/ui/components';
+import { Sidebar, Header, MobileNav } from '@/ui/layouts';
+import {
+  LoginForm,
+  SearchableUserSelect,
+  DashboardView,
+  ProjectsView,
+  TasksView,
+  TeamView,
+  StatusBadge
+} from '@/ui/features';
+import { fetchJson } from '@/ui/utils/api';
 
-const SearchableUserSelect = ({ users, selectedIds, onChange, label }: any) => {
-  const [query, setQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const filtered = users.filter((u: User) => u.name.toLowerCase().includes(query.toLowerCase()));
-
-  return (
-    <div className="relative space-y-1" ref={containerRef}>
-      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">{label}</label>
-      <div
-        className="w-full min-h-[42px] p-1.5 border border-slate-200 rounded-md bg-white flex flex-wrap gap-1.5 cursor-pointer hover:border-accent transition-colors"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {selectedIds.length === 0 && <span className="text-slate-400 text-sm py-1 px-2">Tìm kiếm & Chọn nhân sự...</span>}
-        {selectedIds.map((id: string) => {
-          const user = users.find((u: User) => u.id === id);
-          return (
-            <div key={id} className="bg-slate-50 text-slate-700 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1.5 text-xs font-bold">
-              <img src={user?.avatar} className="w-4 h-4 rounded-full" />
-              {user?.name}
-              <XMarkIcon className="w-3 h-3 cursor-pointer hover:text-red-500" onClick={(e) => { e.stopPropagation(); onChange(selectedIds.filter((x: string) => x !== id)); }} />
-            </div>
-          );
-        })}
-      </div>
-      {isOpen && (
-        <div className="absolute z-[250] top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-2xl max-h-60 overflow-y-auto custom-scrollbar modal-enter">
-          <div className="p-2 sticky top-0 bg-white border-b border-slate-100">
-            <input
-              autoFocus
-              className="w-full px-3 py-2 text-sm border-none focus:ring-0"
-              placeholder="Nhập tên..."
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onClick={e => e.stopPropagation()}
-            />
-          </div>
-          {filtered.map((u: User) => (
-            <div
-              key={u.id}
-              className={`p-3 text-sm flex items-center gap-3 cursor-pointer hover:bg-slate-50 ${selectedIds.includes(u.id) ? 'bg-blue-50 text-blue-600' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (selectedIds.includes(u.id)) onChange(selectedIds.filter((x: string) => x !== u.id));
-                else onChange([...selectedIds, u.id]);
-              }}
-            >
-              <img src={u.avatar} className="w-6 h-6 rounded-full" />
-              <div className="flex-1 font-medium">{u.name}</div>
-              {selectedIds.includes(u.id) && <CheckIcon className="w-4 h-4" />}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const boardColumns = [
-  { id: 'overdue', label: 'Quá hạn', color: '#EF4444' },
-  { id: 'today', label: 'Hôm nay', color: '#10B981' },
-  { id: 'thisWeek', label: 'Tuần này', color: '#3B82F6' },
-  { id: 'later', label: 'Sắp tới', color: '#6366F1' },
-  { id: 'done', label: 'Đã xong', color: '#94A3B8' }
-];
+// Kanban board columns configuration đã được move vào TasksView component
 
 const AppShell: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -120,13 +51,9 @@ const AppShell: React.FC = () => {
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [newProjectMembers, setNewProjectMembers] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const kanbanRef = useRef<HTMLDivElement>(null);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  // Kanban drag state đã được move vào TasksView component
   const [isLoading, setIsLoading] = useState(true);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
@@ -153,40 +80,9 @@ const AppShell: React.FC = () => {
     load();
   }, []);
 
-  const startDragging = (e: React.MouseEvent) => {
-    if (!kanbanRef.current) return;
-    setIsScrolling(true);
-    setStartX(e.pageX - kanbanRef.current.offsetLeft);
-    setScrollLeft(kanbanRef.current.scrollLeft);
-  };
+  // Kanban drag handlers đã được move vào TasksView component
 
-  const stopDragging = () => setIsScrolling(false);
-
-  const moveDragging = (e: React.MouseEvent) => {
-    if (!isScrolling || !kanbanRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - kanbanRef.current.offsetLeft;
-    const walk = (x - startX) * 1.5;
-    kanbanRef.current.scrollLeft = scrollLeft - walk;
-  };
-
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    setAuthError(null);
-    try {
-      const res = await fetchJson<{ ok: true; data: User }>('/api/users/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: f.get('email'), password: f.get('password') })
-      });
-      setCurrentUser(res.data);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Đăng nhập thất bại';
-      setAuthError(message);
-    }
-  };
-
+  // Login được xử lý bởi LoginForm component
   const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setSelectedProjectId(null); };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,287 +234,94 @@ const AppShell: React.FC = () => {
     return groups;
   }, [filteredTasks]);
 
-  const StatusBadge = ({ task }: { task: Task }) => {
-    if (task.status === TaskStatus.BUG) return <span className="bg-red-50 text-red-500 px-2 py-0.5 rounded text-[9px] font-black border border-red-100 flex items-center gap-1 uppercase"><BugAntIcon className="w-3 h-3" /> Lỗi</span>;
-    if (task.status === TaskStatus.DONE) return <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[9px] font-black border border-emerald-100 uppercase tracking-wider">Xong</span>;
-    return <span className="bg-slate-50 text-slate-500 px-2 py-0.5 rounded text-[9px] font-black border border-slate-100 uppercase tracking-wider">{task.status}</span>;
-  };
+  // StatusBadge đã được tách thành component riêng trong ui/features/tasks/StatusBadge.tsx
 
+  // Show loading screen - sử dụng Loading component
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto border-2 border-white/20 border-t-white rounded-full animate-spin" />
-          <p className="text-sm">Đang tải dữ liệu...</p>
-          {globalError && <p className="text-red-300 text-xs">{globalError}</p>}
-        </div>
-      </div>
-    );
+    return <Loading message="Đang tải dữ liệu..." error={globalError} fullScreen />;
   }
 
+  // Show login screen - sử dụng LoginForm component
   if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
-        <div className="bg-white w-full max-w-sm p-10 rounded-lg shadow-2xl modal-enter">
-          <div className="text-center mb-10">
-            <div className="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center text-white font-black mx-auto mb-4">D</div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">D-Line Workflows</h1>
-            <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-widest">Enterprise ERP</p>
-          </div>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input required name="email" type="email" placeholder="Email" className="w-full px-4 py-3 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white transition-all" />
-            <input required name="password" type="password" placeholder="Mật khẩu" className="w-full px-4 py-3 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white transition-all" />
-            <button className="w-full py-3.5 bg-slate-900 text-white rounded font-bold text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10">Đăng nhập</button>
-          </form>
-          {authError && <p className="text-red-500 text-xs mt-4 text-center">{authError}</p>}
-          {users.length === 0 && (
-            <p className="text-[11px] text-slate-500 text-center mt-4">
-              Chưa có user trong DB. Tạo mới bằng API /api/users (POST) rồi đăng nhập.
-            </p>
-          )}
-        </div>
-      </div>
-    );
+    return <LoginForm onLoginSuccess={setCurrentUser} userCount={users.length} />;
   }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden relative">
-      <aside className="hidden md:flex w-64 bg-primary flex-col shrink-0">
-        <div className="p-8 flex items-center gap-3 border-b border-white/5">
-          <div className="w-8 h-8 bg-accent rounded flex items-center justify-center text-white font-black">D</div>
-          <span className="text-white font-bold tracking-tight">D-LINE PRO</span>
-        </div>
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto no-scrollbar">
-          <button onClick={() => { setActiveTab('dashboard'); setSelectedProjectId(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all ${activeTab === 'dashboard' ? 'bg-white/10 text-white shadow-inner' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-            <HomeIcon className="w-5 h-5" /> Tổng quan
-          </button>
-          <button onClick={() => { setActiveTab('projects'); setSelectedProjectId(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all ${activeTab === 'projects' ? 'bg-white/10 text-white shadow-inner' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-            <BriefcaseIcon className="w-5 h-5" /> Dự án
-          </button>
-          <button onClick={() => { setActiveTab('tasks'); setSelectedProjectId(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all ${activeTab === 'tasks' ? 'bg-white/10 text-white shadow-inner' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-            <Squares2X2Icon className="w-5 h-5" /> Công việc
-          </button>
-          <button onClick={() => { setActiveTab('team'); setSelectedProjectId(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all ${activeTab === 'team' ? 'bg-white/10 text-white shadow-inner' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-            <UserGroupIcon className="w-5 h-5" /> Nhân sự
-          </button>
-
-          <div className="pt-8 px-4 pb-2"><span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Dự án tham gia</span></div>
-          <div className="space-y-0.5">
-            {projects.map(p => (
-              <button key={p.id} onClick={() => { setSelectedProjectId(p.id); setActiveTab('tasks'); }} className={`w-full flex items-center gap-3 px-4 py-2 rounded text-xs transition-all ${selectedProjectId === p.id ? 'text-white font-bold bg-white/5' : 'text-slate-500 hover:text-white'}`}>
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }}></div> {p.name}
-              </button>
-            ))}
-          </div>
-        </nav>
-        <div className="p-4 bg-[#0A0F1E] flex items-center gap-3">
-          <img src={currentUser.avatar} className="w-9 h-9 rounded-full border border-white/10" alt="" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-white font-bold truncate">{currentUser.name}</p>
-            <p className="text-[9px] text-slate-500 uppercase font-black">{currentUser.role}</p>
-          </div>
-          <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-red-400 transition-colors"><ArrowRightOnRectangleIcon className="w-5 h-5" /></button>
-        </div>
-      </aside>
+      {/* Sidebar - sử dụng Sidebar component */}
+      <Sidebar
+        currentUser={currentUser}
+        activeTab={activeTab}
+        selectedProjectId={selectedProjectId}
+        projects={projects}
+        onTabChange={(tab) => { 
+          setActiveTab(tab); 
+          setSelectedProjectId(null); 
+        }}
+        onProjectSelect={(id) => { 
+          setSelectedProjectId(id); 
+          setActiveTab('tasks'); 
+        }}
+        onLogout={handleLogout}
+      />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-10 shrink-0">
-          <div className="flex items-center gap-3">
-            {selectedProjectId && <button onClick={() => setSelectedProjectId(null)} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 transition-colors"><ChevronLeftIcon className="w-5 h-5" /></button>}
-            <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">
-              {selectedProjectId ? projects.find(p => p.id === selectedProjectId)?.name : activeTab}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2 md:gap-4">
-            <div className="relative group hidden sm:block">
-              <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-accent transition-colors" />
-              <input type="text" placeholder="Tìm kiếm..." className="bg-slate-100 border-none rounded-md pl-9 pr-4 py-2 text-xs w-32 md:w-72 focus:w-40 md:focus:w-72 focus:bg-white focus:ring-1 focus:ring-accent transition-all" />
-            </div>
-            {activeTab === 'projects' && <button onClick={() => setIsProjectModalOpen(true)} className="bg-primary text-white p-2 md:px-4 md:py-2 rounded md:rounded-md text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"><FolderPlusIcon className="w-5 h-5 md:w-4 md:h-4" /><span className="hidden md:inline">Dự án mới</span></button>}
-            {activeTab === 'team' && <button onClick={() => setIsUserModalOpen(true)} className="bg-primary text-white p-2 md:px-4 md:py-2 rounded md:rounded-md text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"><PlusIcon className="w-5 h-5 md:w-4 md:h-4" /><span className="hidden md:inline">Nhân sự mới</span></button>}
-            {(activeTab === 'tasks' || selectedProjectId) && <button onClick={() => setIsTaskModalOpen(true)} className="bg-accent text-white p-2 md:px-4 md:py-2 rounded md:rounded-md text-xs font-bold flex items-center gap-2 hover:bg-blue-600 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"><PlusIcon className="w-5 h-5 md:w-4 md:h-4" /><span className="hidden md:inline">Giao việc mới</span></button>}
-          </div>
-        </header>
+        {/* Header - sử dụng Header component */}
+        <Header
+          activeTab={activeTab}
+          selectedProjectId={selectedProjectId}
+          projects={projects}
+          onBack={() => setSelectedProjectId(null)}
+          onCreateProject={() => setIsProjectModalOpen(true)}
+          onCreateUser={() => setIsUserModalOpen(true)}
+          onCreateTask={() => setIsTaskModalOpen(true)}
+        />
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-10 pb-24 md:pb-10">
+          {/* Dashboard View */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6 md:space-y-10 modal-enter max-w-7xl mx-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                {[
-                  { label: 'Dự án đang chạy', val: projects.length, icon: BriefcaseIcon, color: 'text-slate-900', bg: 'bg-white' },
-                  { label: 'Tổng công việc', val: tasks.length, icon: Squares2X2Icon, color: 'text-blue-600', bg: 'bg-white' },
-                  { label: 'Việc hoàn thành', val: tasks.filter(t => t.status === TaskStatus.DONE).length, icon: CheckIcon, color: 'text-emerald-600', bg: 'bg-white' },
-                  { label: 'Tổng lỗi (Bugs)', val: tasks.filter(t => t.status === TaskStatus.BUG).length, icon: BugAntIcon, color: 'text-red-500', bg: 'bg-white' }
-                ].map((s, i) => (
-                  <div key={i} className={`${s.bg} p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center text-center group hover:border-accent transition-all`}>
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><s.icon className={`w-5 h-5 md:w-6 md:h-6 ${s.color}`} /></div>
-                    <p className="text-2xl md:text-3xl font-black text-slate-900">{s.val}</p>
-                    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm">
-                <div className="flex justify-between items-center mb-6 md:mb-8">
-                  <h3 className="font-black text-slate-900 text-[10px] md:text-sm uppercase tracking-widest">Tình trạng công việc gần nhất</h3>
-                  <button className="text-[9px] md:text-[10px] font-bold text-accent hover:underline uppercase">Tất cả</button>
-                </div>
-                <div className="divide-y divide-slate-50">
-                  {tasks.filter(t => t.status !== TaskStatus.DONE).slice(0, 5).map(t => (
-                    <div key={t.id} onClick={() => setSelectedTask(t)} className="flex items-center justify-between py-4 md:py-5 hover:bg-slate-50 px-2 md:px-4 md:-mx-4 transition-all cursor-pointer group rounded-md">
-                      <div className="flex items-center gap-3 md:gap-5 min-w-0">
-                        <StatusBadge task={t} />
-                        <p className="text-xs md:text-sm font-bold text-slate-700 truncate group-hover:text-accent">{t.title}</p>
-                      </div>
-                      <div className="flex items-center gap-4 md:gap-8 shrink-0">
-                        <div className="text-right hidden sm:block">
-                          <p className="text-[9px] font-black text-slate-300 uppercase">Deadline</p>
-                          <p className="text-xs font-bold text-slate-500">{new Date(t.deadline || '').toLocaleDateString('vi-VN')}</p>
-                        </div>
-                        <img src={users.find(u => u.id === t.assigneeId)?.avatar} className="w-6 h-6 md:w-8 md:h-8 rounded-full border border-slate-100 shadow-sm" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <DashboardView
+              projects={projects}
+              tasks={tasks}
+              users={users}
+              onTaskClick={setSelectedTask}
+            />
           )}
 
+          {/* Projects View */}
           {activeTab === 'projects' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 modal-enter max-w-7xl mx-auto">
-              {projects.map(p => (
-                <div key={p.id} onClick={() => { setSelectedProjectId(p.id); setActiveTab('tasks'); }} className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer group flex flex-col">
-                  <div className="h-1 w-full" style={{ backgroundColor: p.color }}></div>
-                  <div className="p-6 md:p-8-1">
-                    <div className="flex justify-between items-start mb-4 md:mb-6">
-                      <div className="p-2 bg-slate-50 rounded group-hover:bg-accent/5 transition-colors"><BriefcaseIcon className="w-5 h-5 md:w-6 md:h-6 text-slate-300 group-hover:text-accent" /></div>
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded border border-blue-100 uppercase tracking-widest">Active</span>
-                    </div>
-                    <h3 className="text-base md:text-lg font-bold text-slate-900 mb-2 group-hover:text-accent transition-colors">{p.name}</h3>
-                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-6 md:mb-10">{p.description}</p>
-                    <div className="flex justify-between items-center pt-6 md:pt-8 border-t border-slate-50">
-                      <div className="flex -space-x-2">
-                        {p.memberIds.slice(0, 3).map(mid => <img key={mid} src={users.find(u => u.id === mid)?.avatar} className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-white shadow-sm" />)}
-                        {p.memberIds.length > 3 && <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-slate-100 flex items-center justify-center text-[8px] md:text-[9px] font-bold text-slate-400 border-2 border-white">+{p.memberIds.length - 3}</div>}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[9px] font-black text-slate-300 uppercase">Hạn</p>
-                        <p className="text-xs font-bold text-slate-800">{new Date(p.deadline || '').toLocaleDateString('vi-VN')}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ProjectsView
+              projects={projects}
+              users={users}
+              onProjectClick={(id) => {
+                setSelectedProjectId(id);
+                setActiveTab('tasks');
+              }}
+            />
           )}
 
+          {/* Tasks View */}
           {activeTab === 'tasks' && (
-            <div className="h-full flex flex-col modal-enter relative">
-              <div
-                className={`flex gap-4 md:gap-6 overflow-x-auto pb-10 custom-scrollbar grab-scroll ${isScrolling ? 'cursor-grabbing' : 'cursor-grab'}`}
-                ref={kanbanRef}
-                onMouseDown={startDragging}
-                onMouseUp={stopDragging}
-                onMouseLeave={stopDragging}
-                onMouseMove={moveDragging}
-              >
-                {boardColumns.map(col => (
-                  <div key={col.id} className="kanban-column flex flex-col select-none">
-                    <div className="flex items-center justify-between px-3 mb-4 md:mb-5">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xs font-black text-slate-600 uppercase tracking-[0.15em]">{col.label}</span>
-                        <span className="bg-slate-200/60 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-black">{kanbanGroups[col.id]?.length || 0}</span>
-                      </div>
-                    </div>
-                    <div className="flex-1 bg-slate-200/30 rounded-lg p-3 space-y-3 md:space-y-4 min-h-[500px] border border-slate-200/40">
-                      {kanbanGroups[col.id]?.map(task => (
-                        <div
-                          key={task.id}
-                          onClick={(e) => {
-                            if (isScrolling) return;
-                            setSelectedTask(task);
-                          }}
-                          className="bg-white p-4 md:p-5 rounded-md border border-slate-200 shadow-sm hover:border-accent transition-all cursor-pointer group"
-                        >
-                          <div className="flex justify-between items-start mb-3 md:mb-4">
-                            <StatusBadge task={task} />
-                            <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${task.priority === TaskPriority.HIGH ? 'bg-red-50 text-red-500 border-red-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>{task.priority}</div>
-                          </div>
-                          <h4 className="text-[13px] font-bold text-slate-800 mb-4 md:mb-5 leading-relaxed line-clamp-2 group-hover:text-accent transition-colors">{task.title}</h4>
-                          <div className="flex justify-between items-center mt-auto">
-                            <div className="flex items-center gap-2">
-                              <img src={users.find(u => u.id === task.assigneeId)?.avatar} className="w-7 h-7 rounded-full border border-slate-100 shadow-sm" />
-                              {task.imageUrls && task.imageUrls.length > 0 && <span className="flex items-center gap-1 text-slate-300"><PhotoIcon className="w-3.5 h-3.5" /></span>}
-                            </div>
-                            <span className={`text-[10px] font-bold flex items-center gap-1 ${col.id === 'overdue' ? 'text-red-500' : 'text-slate-400'}`}>
-                              {new Date(task.deadline || '').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <TasksView
+              kanbanGroups={kanbanGroups}
+              users={users}
+              onTaskClick={setSelectedTask}
+            />
           )}
 
+          {/* Team View */}
           {activeTab === 'team' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 modal-enter max-w-7xl mx-auto">
-              {users.map(u => {
-                const workload = tasks.filter(t => t.assigneeId === u.id && t.status !== TaskStatus.DONE).length;
-                return (
-                  <div key={u.id} className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm text-center group hover:border-accent transition-all">
-                    <img src={u.avatar} className="w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-6 border-4 border-slate-50 shadow-inner" />
-                    <h4 className="font-bold text-slate-900 group-hover:text-accent">{u.name}</h4>
-                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase mb-6 tracking-widest">{u.role}</p>
-                    <div className="pt-6 border-t border-slate-50 flex justify-around">
-                      <div className="text-center">
-                        <p className="text-lg md:text-xl font-black text-slate-900">{workload}</p>
-                        <p className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase">Đang làm</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-lg md:text-xl font-black text-slate-900">{tasks.filter(t => t.assigneeId === u.id && t.status === TaskStatus.DONE).length}</p>
-                        <p className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase">Xong</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <TeamView users={users} tasks={tasks} />
           )}
         </div>
       </main>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex items-center justify-around px-2 z-40">
-        <button
-          onClick={() => { setActiveTab('dashboard'); setSelectedProjectId(null); }}
-          className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-accent' : 'text-slate-400'}`}
-        >
-          <HomeIcon className="w-6 h-6" />
-          <span className="text-[9px] font-bold uppercase tracking-tighter">Tổng quan</span>
-        </button>
-        <button
-          onClick={() => { setActiveTab('projects'); setSelectedProjectId(null); }}
-          className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${activeTab === 'projects' ? 'text-accent' : 'text-slate-400'}`}
-        >
-          <BriefcaseIcon className="w-6 h-6" />
-          <span className="text-[9px] font-bold uppercase tracking-tighter">Dự án</span>
-        </button>
-        <button
-          onClick={() => { setActiveTab('tasks'); setSelectedProjectId(null); }}
-          className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${activeTab === 'tasks' ? 'text-accent' : 'text-slate-400'}`}
-        >
-          <Squares2X2Icon className="w-6 h-6" />
-          <span className="text-[9px] font-bold uppercase tracking-tighter">Công việc</span>
-        </button>
-        <button
-          onClick={() => { setActiveTab('team'); setSelectedProjectId(null); }}
-          className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${activeTab === 'team' ? 'text-accent' : 'text-slate-400'}`}
-        >
-          <UserGroupIcon className="w-6 h-6" />
-          <span className="text-[9px] font-bold uppercase tracking-tighter">Nhân sự</span>
-        </button>
-      </nav>
+      {/* Mobile Navigation - sử dụng MobileNav component */}
+      <MobileNav
+        activeTab={activeTab}
+        onTabChange={(tab) => { setActiveTab(tab); setSelectedProjectId(null); }}
+        onClearSelection={() => setSelectedProjectId(null)}
+      />
 
       {isUserModalOpen && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={() => setIsUserModalOpen(false)}>

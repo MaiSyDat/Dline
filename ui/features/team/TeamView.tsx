@@ -1,0 +1,65 @@
+/**
+ * TeamView Component
+ * 
+ * View hiển thị danh sách team members với workload stats
+ */
+
+'use client';
+
+import React from 'react';
+import { Task, TaskStatus, User } from '@/types';
+import { Avatar } from '../../components/Avatar';
+
+export interface TeamViewProps {
+  /** Danh sách users */
+  users: User[];
+  /** Danh sách tasks */
+  tasks: Task[];
+}
+
+/**
+ * TeamView component với user cards
+ */
+export const TeamView: React.FC<TeamViewProps> = ({
+  users,
+  tasks
+}) => {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 modal-enter max-w-7xl mx-auto">
+      {users.map(u => {
+        const workload = tasks.filter(t => t.assigneeId === u.id && t.status !== TaskStatus.DONE).length;
+        const completed = tasks.filter(t => t.assigneeId === u.id && t.status === TaskStatus.DONE).length;
+        
+        return (
+          <div
+            key={u.id}
+            className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm text-center group hover:border-accent transition-all"
+          >
+            <Avatar
+              src={u.avatar}
+              name={u.name}
+              size="xl"
+              bordered
+              className="mx-auto mb-6 border-4 border-slate-50 shadow-inner"
+            />
+            <h4 className="font-bold text-slate-900 group-hover:text-accent">{u.name}</h4>
+            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase mb-6 tracking-widest">
+              {u.role}
+            </p>
+            <div className="pt-6 border-t border-slate-50 flex justify-around">
+              <div className="text-center">
+                <p className="text-lg md:text-xl font-black text-slate-900">{workload}</p>
+                <p className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase">Đang làm</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg md:text-xl font-black text-slate-900">{completed}</p>
+                <p className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase">Xong</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
