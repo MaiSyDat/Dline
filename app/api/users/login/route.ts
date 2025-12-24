@@ -13,9 +13,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Thiếu email/password' }, { status: 400 });
     }
 
+    // Normalize email (lowercase, trim)
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedPassword = password.trim();
+
     const { users } = await getCollections();
-    const user = await users.findOne({ email, password });
+    
+    // Tìm user theo email (case-insensitive)
+    const user = await users.findOne({ 
+      email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') }
+    });
+
     if (!user) {
+      console.log('User not found:', normalizedEmail);
+      return NextResponse.json({ ok: false, error: 'Sai thông tin đăng nhập' }, { status: 401 });
+    }
+
+    // So sánh password
+    if (user.password !== normalizedPassword) {
+      console.log('Password mismatch for:', normalizedEmail);
       return NextResponse.json({ ok: false, error: 'Sai thông tin đăng nhập' }, { status: 401 });
     }
 
