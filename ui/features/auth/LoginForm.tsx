@@ -10,22 +10,20 @@
 import React, { useState, FormEvent } from 'react';
 import { User } from '@/types';
 import { Input } from '../../components/Input';
+import { PasswordInput } from '../../components/PasswordInput';
 import { Button } from '../../components/Button';
 import { fetchJson } from '../../utils/api';
 
 export interface LoginFormProps {
   /** Callback khi login thành công */
   onLoginSuccess: (user: User) => void;
-  /** Số lượng users trong DB (để hiển thị message) */
-  userCount?: number;
 }
 
 /**
  * LoginForm component với email/password validation
  */
 export const LoginForm: React.FC<LoginFormProps> = ({
-  onLoginSuccess,
-  userCount = 0
+  onLoginSuccess
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,9 +77,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             required
             label="Email"
           />
-          <Input
+          <PasswordInput
             name="password"
-            type="password"
             placeholder="Mật khẩu"
             required
             label="Mật khẩu"
@@ -100,13 +97,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         {/* Error message */}
         {error && (
           <p className="text-red-500 text-xs mt-4 text-center">{error}</p>
-        )}
-
-        {/* Info message nếu chưa có user */}
-        {userCount === 0 && (
-          <p className="text-[11px] text-slate-500 text-center mt-4">
-            Chưa có user trong DB. Tạo mới bằng API /api/users (POST) rồi đăng nhập.
-          </p>
         )}
       </div>
     </div>

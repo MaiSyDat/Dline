@@ -23,7 +23,7 @@ import {
 import { Project, Task, TaskPriority, TaskStatus, User, UserRole } from '@/types';
 
 // UI Components - Import từ thư mục ui
-import { Loading } from '@/ui/components';
+import { Loading, PasswordInput } from '@/ui/components';
 import { Sidebar, Header, MobileNav } from '@/ui/layouts';
 import {
   LoginForm,
@@ -35,11 +35,19 @@ import {
   StatusBadge
 } from '@/ui/features';
 import { fetchJson } from '@/ui/utils/api';
+import { saveUser, getUser, removeUser } from '@/ui/utils/auth';
 
 // Kanban board columns configuration đã được move vào TasksView component
 
 const AppShell: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Khởi tạo currentUser từ localStorage ngay từ đầu để tránh flash LoginForm
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    // Chỉ chạy trên client side
+    if (typeof window !== 'undefined') {
+      return getUser();
+    }
+    return null;
+  });
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'tasks' | 'team'>('dashboard');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -53,37 +61,68 @@ const AppShell: React.FC = () => {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   // Kanban drag state đã được move vào TasksView component
   const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // State để check authentication
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
+  // Verify user từ localStorage khi component mount
   useEffect(() => {
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        const [{ data: userData }, { data: projectData }, { data: taskData }] = await Promise.all([
-          fetchJson<{ ok: true; data: User[] }>('/api/users'),
-          fetchJson<{ ok: true; data: Project[] }>('/api/projects'),
-          fetchJson<{ ok: true; data: Task[] }>('/api/tasks')
-        ]);
-        setUsers(userData);
-        setProjects(projectData);
-        setTasks(taskData);
-        setGlobalError(null);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Không tải được dữ liệu';
-        setGlobalError(message);
-      } finally {
-        setIsLoading(false);
+    const checkAuth = () => {
+      const savedUser = getUser();
+      if (savedUser) {
+        setCurrentUser(savedUser);
       }
+      setIsCheckingAuth(false);
     };
-    load();
+    checkAuth();
   }, []);
+
+  // Load data from API - chỉ load khi đã có user (đã đăng nhập)
+  useEffect(() => {
+    // Chỉ load data khi đã check auth xong và có user
+    if (!isCheckingAuth && currentUser) {
+      const load = async () => {
+        try {
+          setIsLoading(true);
+          const [{ data: userData }, { data: projectData }, { data: taskData }] = await Promise.all([
+            fetchJson<{ ok: true; data: User[] }>('/api/users'),
+            fetchJson<{ ok: true; data: Project[] }>('/api/projects'),
+            fetchJson<{ ok: true; data: Task[] }>('/api/tasks')
+          ]);
+          setUsers(userData);
+          setProjects(projectData);
+          setTasks(taskData);
+          setGlobalError(null);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Không tải được dữ liệu';
+          setGlobalError(message);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      load();
+    } else if (!isCheckingAuth && !currentUser) {
+      // Nếu không có user thì không cần load data
+      setIsLoading(false);
+    }
+  }, [isCheckingAuth, currentUser]);
 
   // Kanban drag handlers đã được move vào TasksView component
 
-  // Login được xử lý bởi LoginForm component
-  const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setSelectedProjectId(null); };
+  // Handle login success - lưu user vào localStorage
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    saveUser(user); // Lưu vào localStorage
+  };
+
+  // Handle logout - xóa user khỏi localStorage
+  const handleLogout = () => {
+    setCurrentUser(null);
+    removeUser(); // Xóa khỏi localStorage
+    setActiveTab('dashboard');
+    setSelectedProjectId(null);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -236,15 +275,18 @@ const AppShell: React.FC = () => {
 
   // StatusBadge đã được tách thành component riêng trong ui/features/tasks/StatusBadge.tsx
 
-  // Show loading screen - sử dụng Loading component
-  if (isLoading) {
+  // Show loading screen khi đang check auth hoặc đang load data
+  if (isCheckingAuth || (isLoading && currentUser)) {
     return <Loading message="Đang tải dữ liệu..." error={globalError} fullScreen />;
   }
 
-  // Show login screen - sử dụng LoginForm component
+  // Protect route: Phải đăng nhập mới vào được ứng dụng
+  // Nếu chưa có user thì hiển thị LoginForm
   if (!currentUser) {
-    return <LoginForm onLoginSuccess={setCurrentUser} userCount={users.length} />;
+    return <LoginForm onLoginSuccess={handleLoginSuccess} />;
   }
+
+  // Nếu đã có user thì hiển thị ứng dụng (không thể quay lại trang đăng nhập)
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden relative">
@@ -339,10 +381,12 @@ const AppShell: React.FC = () => {
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
                 <input required name="email" type="email" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white" placeholder="email@company.com" />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mật khẩu</label>
-                <input required name="password" type="password" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white" placeholder="******" />
-              </div>
+              <PasswordInput
+                required
+                name="password"
+                placeholder="******"
+                label="Mật khẩu"
+              />
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vai trò</label>
                 <select name="role" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50">
