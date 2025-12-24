@@ -1,1 +1,12 @@
-{"version":1,"functions":{}}
+{
+  "version": 1,
+  "functions": {
+    "/api/db-check": {},
+    "/api/projects": {},
+    "/api/projects/[id]": {},
+    "/api/tasks": {},
+    "/api/tasks/[id]": {},
+    "/api/users": {},
+    "/api/users/login": {}
+  }
+}

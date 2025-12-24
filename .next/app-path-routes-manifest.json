@@ -1,1 +1,12 @@
-{"/_not-found/page":"/_not-found","/api/db-check/route":"/api/db-check","/api/projects/[id]/route":"/api/projects/[id]","/api/tasks/route":"/api/tasks","/api/projects/route":"/api/projects","/api/tasks/[id]/route":"/api/tasks/[id]","/page":"/","/api/users/route":"/api/users","/api/users/login/route":"/api/users/login"}
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/db-check/route": "/api/db-check",
+  "/api/projects/[id]/route": "/api/projects/[id]",
+  "/api/projects/route": "/api/projects",
+  "/api/tasks/[id]/route": "/api/tasks/[id]",
+  "/api/tasks/route": "/api/tasks",
+  "/api/users/login/route": "/api/users/login",
+  "/api/users/route": "/api/users",
+  "/page": "/"
+}

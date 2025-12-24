@@ -6,15 +6,16 @@ import { Task } from '@/types';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function PUT(req: Request, { params }: Params) {
+  const { id } = await params;
   try {
     const body = await req.json();
     const { tasks } = await getCollections();
     const options: FindOneAndUpdateOptions = { returnDocument: 'after' };
     const res = await tasks.findOneAndUpdate(
-      { id: params.id },
+      { id },
       { $set: body },
       options
     );
@@ -31,8 +32,9 @@ export async function PUT(req: Request, { params }: Params) {
 
 export async function DELETE(_req: Request, { params }: Params) {
   try {
+    const { id } = await params;
     const { tasks } = await getCollections();
-    const res = await tasks.deleteOne({ id: params.id });
+    const res = await tasks.deleteOne({ id });
     if (res.deletedCount === 0) {
       return NextResponse.json({ ok: false, error: 'Không tìm thấy công việc' }, { status: 404 });
     }

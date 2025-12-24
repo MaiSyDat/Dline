@@ -25,8 +25,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Thiếu name/email/password' }, { status: 400 });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
     const { users } = await getCollections();
-    const existed = await users.findOne({ email });
+    const existed = await users.findOne({ 
+      email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    });
     if (existed) {
       return NextResponse.json({ ok: false, error: 'Email đã tồn tại' }, { status: 400 });
     }
@@ -34,11 +37,11 @@ export async function POST(req: Request) {
     const id = crypto.randomUUID();
     const user: User = {
       id,
-      name,
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       password,
       role: role as UserRole,
-      avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0F172A&color=fff`
+      avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=0F172A&color=fff`
     };
 
     await users.insertOne(user);

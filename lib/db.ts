@@ -81,8 +81,9 @@ export async function getCollections() {
     };
     return cachedCollections;
   } catch (error) {
-    console.error('getCollections error:', error);
-    // Reset cache on error để retry
+    if (process.env.NODE_ENV === 'development') {
+      console.error('getCollections error:', error);
+    }
     cachedCollections = null;
     cachedDb = null;
     throw error;
