@@ -3,6 +3,9 @@ import { getCollections } from '@/lib/db';
 import { FindOneAndUpdateOptions, WithId } from 'mongodb';
 import { Task } from '@/types';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 type Params = { params: { id: string } };
 
 export async function PUT(req: Request, { params }: Params) {

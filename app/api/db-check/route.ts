@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { ensureCollections, pingDb } from '@/lib/db';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const result = await pingDb();

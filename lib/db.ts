@@ -4,6 +4,12 @@ import { Project, Task, User } from '@/types';
 const uri = process.env.DATABASE_URL;
 const dbName = process.env.MONGODB_DB || 'dline';
 
+// Tối ưu cho serverless (Vercel): cache connection globally
+declare global {
+  // eslint-disable-next-line no-var
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
+}
+
 let client: MongoClient | null = null;
 let clientPromise: Promise<MongoClient> | null = null;
 let cachedDb: Db | null = null;
@@ -17,8 +23,22 @@ async function getClient() {
   if (!uri) {
     throw new Error('DATABASE_URL chưa được cấu hình cho MongoDB.');
   }
-  if (clientPromise) return clientPromise;
 
+  // Sử dụng global cache cho serverless (Vercel)
+  if (process.env.NODE_ENV === 'production') {
+    if (!global._mongoClientPromise) {
+      client = new MongoClient(uri, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+      });
+      global._mongoClientPromise = client.connect();
+    }
+    return global._mongoClientPromise;
+  }
+
+  // Development: reuse connection
+  if (clientPromise) return clientPromise;
   client = new MongoClient(uri);
   clientPromise = client.connect();
   return clientPromise;

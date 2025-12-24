@@ -2,10 +2,18 @@ import { NextResponse } from 'next/server';
 import { getCollections } from '@/lib/db';
 import { User, UserRole } from '@/types';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
-  const { users } = await getCollections();
-  const data = await users.find().toArray();
-  return NextResponse.json({ ok: true, data });
+  try {
+    const { users } = await getCollections();
+    const data = await users.find().toArray();
+    return NextResponse.json({ ok: true, data });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Không thể lấy danh sách users';
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
