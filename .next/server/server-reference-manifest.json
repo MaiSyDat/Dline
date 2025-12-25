@@ -1,5 +1,21 @@
 {
-  "node": {},
+  "node": {
+    "60ea80dafd0cb4679cfe0cd89432a8fde7326de69b": {
+      "workers": {
+        "app/page": {
+          "moduleId": 21893,
+          "async": false,
+          "exportedName": "getGeminiInsights",
+          "filename": "services/geminiService.ts"
+        }
+      },
+      "layer": {
+        "app/page": "action-browser"
+      },
+      "filename": "services/geminiService.ts",
+      "exportedName": "getGeminiInsights"
+    }
+  },
   "edge": {},
   "encryptionKey": "kVmgiXdiZo1+hhxtK2ph+BfhzUP0HroUyJKjo5dBuGU="
 }

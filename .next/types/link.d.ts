@@ -39,8 +39,10 @@ declare namespace __next_route_internal_types__ {
     | `/api/users`
     | `/api/users/login`
   type DynamicRoutes<T extends string = string> = 
+    | `/api/auth/${CatchAllSlug<T>}`
     | `/api/projects/${SafeSlug<T>}`
     | `/api/tasks/${SafeSlug<T>}`
+    | `/api/users/${SafeSlug<T>}`
 
   type RouteImpl<T> = 
     | StaticRoutes
