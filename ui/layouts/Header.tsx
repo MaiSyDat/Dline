@@ -23,6 +23,8 @@ export interface HeaderProps {
   selectedProjectId: string | null;
   /** Danh sách projects để tìm project name */
   projects: Project[];
+  /** Role của user hiện tại */
+  currentUserRole?: UserRole | string;
   /** Callback khi click back button */
   onBack?: () => void;
   /** Callback khi click create project */

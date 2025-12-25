@@ -30,7 +30,7 @@ export function detectLinks(text: string): string {
 export function renderTextWithLinks(text: string): React.ReactNode {
   if (!text) return null;
   
-  const parts: (string | JSX.Element)[] = [];
+  const parts: (string | React.ReactElement)[] = [];
   let lastIndex = 0;
   let match;
   const regex = new RegExp(URL_REGEX);

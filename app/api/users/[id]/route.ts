@@ -7,7 +7,7 @@ import { isAdminOrManager, canManagerDeleteUser } from '@/lib/permissions';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Params = Promise<{ id: string }>;
+type Params = { params: Promise<{ id: string }> };
 
 /**
  * DELETE /api/users/[id]
