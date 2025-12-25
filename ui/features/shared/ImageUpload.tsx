@@ -83,7 +83,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
         {/* Upload button */}
         {images.length < maxImages && (
-          <label className="w-20 h-20 shrink-0 border-2 border-dashed border-slate-200 rounded-md flex flex-col items-center justify-center text-slate-300 hover:text-accent hover:border-accent cursor-pointer transition-colors">
+          <label className="w-20 h-20 shrink-0 border-2 border-dashed border-slate-200 rounded-md flex flex-col items-center justify-center text-slate-300 hover:text-[#FF33E7] hover:border-[#FF33E7] cursor-pointer transition-colors">
             <PlusIcon className="w-5 h-5" />
             <input
               type="file"

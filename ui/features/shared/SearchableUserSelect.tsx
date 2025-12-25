@@ -81,7 +81,7 @@ export const SearchableUserSelect: React.FC<SearchableUserSelectProps> = ({
 
       {/* Input container với selected users */}
       <div
-        className="w-full min-h-[42px] p-1.5 border border-slate-200 rounded-md bg-white flex flex-wrap gap-1.5 cursor-pointer hover:border-accent transition-colors"
+        className="w-full min-h-[42px] p-1.5 border border-slate-200 rounded-md bg-white flex flex-wrap gap-1.5 cursor-pointer hover:border-[#8907E6] transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
         {selectedIds.length === 0 && (
@@ -130,7 +130,7 @@ export const SearchableUserSelect: React.FC<SearchableUserSelectProps> = ({
               key={u.id}
               className={`
                 p-3 text-sm flex items-center gap-3 cursor-pointer hover:bg-slate-50
-                ${selectedIds.includes(u.id) ? 'bg-blue-50 text-blue-600' : ''}
+                ${selectedIds.includes(u.id) ? 'bg-[#8907E6]/10 text-[#8907E6]' : ''}
               `}
               onClick={(e) => {
                 e.stopPropagation();

@@ -85,12 +85,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick }) => {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-grab active:cursor-grabbing group"
+      className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-[#8907E6]/30 transition-all cursor-grab active:cursor-grabbing group"
     >
       <div className="flex justify-between items-start mb-2.5">
         <StatusBadge task={task} />
         <div
-          className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase border ${
+          className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${
             task.priority === TaskPriority.HIGH
               ? 'bg-red-50 text-red-500 border-red-100'
               : task.priority === TaskPriority.MEDIUM
@@ -101,7 +101,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick }) => {
           {task.priority === TaskPriority.HIGH ? 'Cao' : task.priority === TaskPriority.MEDIUM ? 'Trung bình' : 'Thấp'}
         </div>
       </div>
-      <h4 className="text-xs font-semibold text-slate-700 mb-3 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+      <h4 className="text-xs font-semibold text-slate-700 mb-3 leading-snug line-clamp-2 group-hover:text-[#8907E6] transition-colors">
         {task.title}
       </h4>
       <div className="flex justify-between items-center mt-auto">
@@ -118,7 +118,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick }) => {
           )}
         </div>
         {task.deadline && (
-          <span className="text-[9px] font-semibold text-slate-400">
+          <span className="text-[10px] font-semibold text-slate-400">
             {new Date(task.deadline).toLocaleDateString('vi-VN', {
               day: '2-digit',
               month: '2-digit'
@@ -160,7 +160,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
           <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
             {column.label}
           </span>
-          <span className="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+          <span className="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
             {tasks.length}
           </span>
         </div>
@@ -168,8 +168,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
-          className={`flex-1 bg-slate-50 rounded-lg p-2 space-y-2 border shadow-sm transition-all ${
-            isOver ? 'border-blue-400 border-2 bg-blue-50/50 shadow-md' : 'border-slate-200 shadow-sm'
+          className={`flex-1 bg-white rounded-lg p-2 space-y-2 border shadow-sm transition-all ${
+            isOver ? 'border-[#8907E6] border-2 bg-[#8907E6]/10 shadow-md' : 'border-slate-200 shadow-sm'
           }`}
         >
           {tasks.map(task => (
@@ -369,11 +369,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
         {/* Drag overlay - shows task being dragged */}
         <DragOverlay>
           {activeTask ? (
-            <div className="bg-white p-3 rounded-lg border-2 border-blue-400 shadow-xl opacity-95 rotate-1">
+            <div className="bg-white p-3 rounded-lg border-2 border-[#8907E6] shadow-xl opacity-95 rotate-1">
               <div className="flex justify-between items-start mb-2.5">
                 <StatusBadge task={activeTask} />
                 <div
-                  className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase border ${
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${
                     activeTask.priority === TaskPriority.HIGH
                       ? 'bg-red-50 text-red-500 border-red-100'
                       : activeTask.priority === TaskPriority.MEDIUM

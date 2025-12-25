@@ -62,17 +62,13 @@ export const LoginForm: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
       <div className="bg-white w-full max-w-sm p-10 rounded-lg shadow-2xl modal-enter">
-        {/* Logo và title */}
+        {/* Logo */}
         <div className="text-center mb-10">
           <img 
             src="/img/logo/logo.png" 
             alt="D-Line Workflows" 
-            className="w-16 h-16 mx-auto mb-4 object-contain"
+            className="w-32 h-32 mx-auto object-contain"
           />
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">D-Line Workflows</h1>
-          <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-widest">
-            Enterprise ERP
-          </p>
         </div>
 
         {/* Login form */}
@@ -95,7 +91,7 @@ export const LoginForm: React.FC = () => {
             variant="primary"
             fullWidth
             loading={isSubmitting}
-            className="shadow-xl shadow-primary/20"
+            className="shadow-xl shadow-slate-900/20"
           >
             Đăng nhập
           </Button>

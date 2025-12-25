@@ -33,7 +33,7 @@ export const Badge: React.FC<BadgeProps> = ({
     success: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     danger: 'bg-red-50 text-red-500 border-red-100',
     warning: 'bg-yellow-50 text-yellow-600 border-yellow-100',
-    info: 'bg-blue-50 text-blue-600 border-blue-100'
+    info: 'bg-[#8907E6]/10 text-[#8907E6] border-[#8907E6]/20'
   };
 
   // Map size sang Tailwind classes

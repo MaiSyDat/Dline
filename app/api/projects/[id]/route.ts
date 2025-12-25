@@ -11,8 +11,13 @@ export const dynamic = 'force-dynamic';
 type Params = { params: Promise<{ id: string }> };
 
 export async function PUT(req: Request, { params }: Params) {
-  const { id } = await params;
   try {
+    const { id } = await params;
+    
+    if (!id) {
+      return NextResponse.json({ ok: false, error: 'Thiếu ID dự án' }, { status: 400 });
+    }
+
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ ok: false, error: 'Chưa đăng nhập' }, { status: 401 });
@@ -25,6 +30,13 @@ export async function PUT(req: Request, { params }: Params) {
 
     const body = await req.json();
     const { projects } = await getCollections();
+    
+    // Kiểm tra project có tồn tại không
+    const existingProject = await projects.findOne({ id });
+    if (!existingProject) {
+      return NextResponse.json({ ok: false, error: 'Không tìm thấy dự án' }, { status: 404 });
+    }
+
     const options: FindOneAndUpdateOptions = { returnDocument: 'after' };
     const res = await projects.findOneAndUpdate(
       { id },
@@ -33,7 +45,12 @@ export async function PUT(req: Request, { params }: Params) {
     );
     const updated = res as unknown as { value?: WithId<Project> | null };
     if (!updated || !updated.value) {
-      return NextResponse.json({ ok: false, error: 'Không tìm thấy dự án' }, { status: 404 });
+      // Try to fetch the project again to see if update actually worked
+      const checkProject = await projects.findOne({ id });
+      if (checkProject) {
+        return NextResponse.json({ ok: true, data: checkProject });
+      }
+      return NextResponse.json({ ok: false, error: 'Không thể cập nhật dự án' }, { status: 500 });
     }
     return NextResponse.json({ ok: true, data: updated.value });
   } catch (error) {

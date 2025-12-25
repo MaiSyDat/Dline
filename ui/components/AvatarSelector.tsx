@@ -58,8 +58,8 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
               className={`
                 relative aspect-square rounded-lg overflow-hidden border-2 transition-all
                 ${isSelected 
-                  ? 'border-accent ring-2 ring-accent/20' 
-                  : 'border-slate-200 hover:border-accent/50'
+                  ? 'border-[#FF33E7] ring-2 ring-[#FF33E7]/20' 
+                  : 'border-slate-200 hover:border-[#FF33E7]/50'
                 }
               `}
             >
@@ -69,8 +69,8 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                 className="w-full h-full object-cover"
               />
               {isSelected && (
-                <div className="absolute inset-0 bg-accent/20 flex items-center justify-center">
-                  <CheckIcon className="w-6 h-6 text-white bg-accent rounded-full p-1" />
+                <div className="absolute inset-0 bg-[#FF33E7]/20 flex items-center justify-center">
+                  <CheckIcon className="w-6 h-6 text-white bg-[#FF33E7] rounded-full p-1" />
                 </div>
               )}
             </button>

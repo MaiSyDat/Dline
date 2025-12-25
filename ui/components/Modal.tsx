@@ -60,8 +60,8 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Map header variant sang Tailwind classes
   const headerClasses = {
-    primary: 'bg-primary text-white',
-    accent: 'bg-accent text-white'
+    primary: 'bg-[#8907E6] text-white',
+    accent: 'bg-[#FF33E7] text-white'
   };
 
   return (

@@ -41,20 +41,25 @@ export const Avatar: React.FC<AvatarProps> = ({
     xl: 'w-20 h-20'
   };
 
+  // Normalize src - nếu là URL ui-avatars.com và có name, có thể dùng local avatar
+  const normalizedSrc = src || (name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0F172A&color=fff` : '');
+
   return (
     <img
-      src={src}
+      src={normalizedSrc}
       alt={alt || name || 'Avatar'}
       className={`
         rounded-full object-cover
         ${sizeClasses[size]}
-        ${bordered ? 'border-2 border-white shadow-sm' : ''}
+        ${bordered ? 'border-2 border-slate-200 shadow-sm' : ''}
         ${className}
       `}
       onError={(e) => {
-        // Fallback nếu image load lỗi
+        // Fallback nếu image load lỗi - chỉ fallback nếu chưa phải là ui-avatars
         const target = e.target as HTMLImageElement;
-        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=0F172A&color=fff`;
+        if (!target.src.includes('ui-avatars.com')) {
+          target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=0F172A&color=fff`;
+        }
       }}
     />
   );

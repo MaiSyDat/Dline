@@ -41,12 +41,12 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   };
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex items-center justify-around px-2 z-40">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex items-center justify-around px-2 z-40 shadow-md">
       {/* Dashboard tab */}
       <button
         onClick={() => handleTabClick('dashboard')}
         className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-          activeTab === 'dashboard' ? 'text-accent' : 'text-slate-400'
+          activeTab === 'dashboard' ? 'text-[#8907E6]' : 'text-slate-400'
         }`}
       >
         <HomeIcon className="w-6 h-6" />
@@ -57,7 +57,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       <button
         onClick={() => handleTabClick('projects')}
         className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-          activeTab === 'projects' ? 'text-accent' : 'text-slate-400'
+          activeTab === 'projects' ? 'text-[#8907E6]' : 'text-slate-400'
         }`}
       >
         <BriefcaseIcon className="w-6 h-6" />
@@ -68,7 +68,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       <button
         onClick={() => handleTabClick('tasks')}
         className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-          activeTab === 'tasks' ? 'text-accent' : 'text-slate-400'
+          activeTab === 'tasks' ? 'text-[#8907E6]' : 'text-slate-400'
         }`}
       >
         <Squares2X2Icon className="w-6 h-6" />
@@ -79,7 +79,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       <button
         onClick={() => handleTabClick('team')}
         className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-          activeTab === 'team' ? 'text-accent' : 'text-slate-400'
+          activeTab === 'team' ? 'text-[#8907E6]' : 'text-slate-400'
         }`}
       >
         <UserGroupIcon className="w-6 h-6" />

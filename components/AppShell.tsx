@@ -64,6 +64,8 @@ const AppShell: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [newProjectMembers, setNewProjectMembers] = useState<string[]>([]);
@@ -195,6 +197,37 @@ const AppShell: React.FC = () => {
     }
   };
 
+  const handleUpdateProject = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSubmitting || !selectedProject) return;
+    setIsSubmitting(true);
+    const f = new FormData(e.currentTarget);
+    try {
+      const payload = {
+        name: f.get('name'),
+        description: f.get('description'),
+        memberIds: newProjectMembers,
+        startDate: f.get('startDate'),
+        deadline: f.get('deadline') || undefined,
+        status: f.get('status') || 'active',
+        color: f.get('color') || '#8907E6'
+      };
+      const res = await fetchJson<{ ok: true; data: Project }>(`/api/projects/${selectedProject.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      setProjects(prev => prev.map(p => p.id === selectedProject.id ? res.data : p));
+      setIsEditProjectModalOpen(false);
+      setSelectedProject(null);
+      setNewProjectMembers([]);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Không cập nhật được dự án');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCreateProject = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -208,7 +241,8 @@ const AppShell: React.FC = () => {
         startDate: f.get('startDate'),
         deadline: f.get('deadline') || undefined, // Optional
         managerId: currentUser?.id,
-        status: 'active'
+        status: f.get('status') || 'active',
+        color: f.get('color') || '#8907E6'
       };
       const res = await fetchJson<{ ok: true; data: Project }>('/api/projects', {
         method: 'POST',
@@ -373,7 +407,7 @@ const AppShell: React.FC = () => {
   // Nếu đã authenticated thì hiển thị ứng dụng
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden relative">
+    <div className="flex h-screen bg-white overflow-hidden relative">
       {/* Sidebar - sử dụng Sidebar component */}
       <Sidebar
         currentUser={currentUser}
@@ -421,6 +455,15 @@ const AppShell: React.FC = () => {
               users={users}
               onProjectClick={(id) => {
                 setSelectedProjectId(id);
+                setActiveTab('tasks');
+              }}
+              onEditProject={(project) => {
+                setSelectedProject(project);
+                setNewProjectMembers(project.memberIds || []);
+                setIsEditProjectModalOpen(true);
+              }}
+              onViewProject={(project) => {
+                setSelectedProjectId(project.id);
                 setActiveTab('tasks');
               }}
             />
@@ -497,10 +540,10 @@ const AppShell: React.FC = () => {
               <form onSubmit={handleCreateUser} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
                 <div className="lg:col-span-2 space-y-8 md:space-y-12">
                   <div className="space-y-4 md:space-y-6">
-                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
+                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
                   </div>
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Thông tin tài khoản</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Thông tin tài khoản</h4>
                     <div className="space-y-4 pl-4 md:pl-6">
                       <div className="space-y-2">
                         <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
@@ -516,7 +559,7 @@ const AppShell: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
-                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                  <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
                     <div>
                       <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Vai trò</p>
                       <SearchableSelect
@@ -539,7 +582,7 @@ const AppShell: React.FC = () => {
                       />
                     </div>
                     <div className="pt-4 md:pt-8">
-                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-primary text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
                         {isSubmitting ? 'Đang tạo...' : 'Tạo tài khoản'}
                       </button>
                     </div>
@@ -571,7 +614,7 @@ const AppShell: React.FC = () => {
                     <input required name="name" defaultValue={selectedUser.name} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
                   </div>
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Thông tin tài khoản</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Thông tin tài khoản</h4>
                     <div className="space-y-4 pl-4 md:pl-6">
                       <div className="space-y-2">
                         <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
@@ -581,7 +624,7 @@ const AppShell: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
-                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                  <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
                     <div>
                       <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Vai trò</p>
                       <SearchableSelect
@@ -604,7 +647,7 @@ const AppShell: React.FC = () => {
                       />
                     </div>
                     <div className="pt-4 md:pt-8">
-                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-primary text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
                         {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
                       </button>
                     </div>
@@ -618,7 +661,7 @@ const AppShell: React.FC = () => {
 
       {isProjectModalOpen && (
         <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
-          <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+          <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={() => setIsProjectModalOpen(false)} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
               <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
@@ -633,15 +676,15 @@ const AppShell: React.FC = () => {
               <form onSubmit={handleCreateProject} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
                 <div className="lg:col-span-2 space-y-8 md:space-y-12">
                   <div className="space-y-4 md:space-y-6">
-                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Tên dự án..." />
+                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Tên dự án..." />
                   </div>
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Mô tả</h4>
-                    <textarea name="description" rows={8} className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-slate-50 text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" placeholder="Mô tả dự án..." />
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Mô tả</h4>
+                    <textarea name="description" rows={8} className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" placeholder="Mô tả dự án..." />
                   </div>
                 </div>
                 <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
-                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                  <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
                     <SearchableUserSelect users={users} selectedIds={newProjectMembers} onChange={setNewProjectMembers} label="Thành viên" />
                     <div className="grid grid-cols-1 gap-4 md:gap-6 pt-6 border-t border-slate-200/60">
                       <div>
@@ -652,10 +695,84 @@ const AppShell: React.FC = () => {
                         <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Hạn bàn giao (tùy chọn)</p>
                         <input name="deadline" type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white" />
                       </div>
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2">Trạng thái</p>
+                        <select name="status" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white" defaultValue="active">
+                          <option value="active">Đang hoạt động</option>
+                          <option value="completed">Hoàn thành</option>
+                          <option value="on-hold">Tạm dừng</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2">Màu sắc</p>
+                        <input name="color" type="color" className="w-full h-10 border border-slate-200 rounded text-sm bg-white" defaultValue="#8907E6" />
+                      </div>
                     </div>
                     <div className="pt-4 md:pt-8">
-                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-primary text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
                         {isSubmitting ? 'Đang tạo...' : 'Xác nhận dự án'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isEditProjectModalOpen && selectedProject && (
+        <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+          <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={() => { setIsEditProjectModalOpen(false); setSelectedProject(null); setNewProjectMembers([]); }} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Chỉnh sửa dự án</h2>
+            </div>
+            <div className="flex items-center gap-1 md:gap-4">
+              <button onClick={() => { setIsEditProjectModalOpen(false); setSelectedProject(null); setNewProjectMembers([]); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+            <div className="max-w-5xl mx-auto w-full px-4 md:px-8 py-8 md:py-16">
+              <form onSubmit={handleUpdateProject} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
+                <div className="lg:col-span-2 space-y-8 md:space-y-12">
+                  <div className="space-y-4 md:space-y-6">
+                    <input required name="name" defaultValue={selectedProject.name} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Tên dự án..." />
+                  </div>
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Mô tả</h4>
+                    <textarea name="description" rows={8} defaultValue={selectedProject.description} className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" placeholder="Mô tả dự án..." />
+                  </div>
+                </div>
+                <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+                  <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                    <SearchableUserSelect users={users} selectedIds={newProjectMembers} onChange={setNewProjectMembers} label="Thành viên" />
+                    <div className="grid grid-cols-1 gap-4 md:gap-6 pt-6 border-t border-slate-200/60">
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><CalendarDaysIcon className="w-4 h-4" /> Ngày bắt đầu</p>
+                        <input required name="startDate" type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white" defaultValue={selectedProject.startDate ? new Date(selectedProject.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Hạn bàn giao (tùy chọn)</p>
+                        <input name="deadline" type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white" defaultValue={selectedProject.deadline ? new Date(selectedProject.deadline).toISOString().split('T')[0] : ''} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2">Trạng thái</p>
+                        <select name="status" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white" defaultValue={selectedProject.status}>
+                          <option value="active">Đang hoạt động</option>
+                          <option value="completed">Hoàn thành</option>
+                          <option value="on-hold">Tạm dừng</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2">Màu sắc</p>
+                        <input name="color" type="color" className="w-full h-10 border border-slate-200 rounded text-sm bg-white" defaultValue={selectedProject.color || '#8907E6'} />
+                      </div>
+                    </div>
+                    <div className="pt-4 md:pt-8">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                        {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật dự án'}
                       </button>
                     </div>
                   </div>
@@ -711,7 +828,7 @@ const AppShell: React.FC = () => {
                     <input 
                       required 
                       name="title" 
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" 
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" 
                       placeholder="Tiêu đề công việc..." 
                       value={newTaskForm.title}
                       onChange={(e) => setNewTaskForm(prev => ({ ...prev, title: e.target.value }))}
@@ -719,11 +836,11 @@ const AppShell: React.FC = () => {
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Nội dung yêu cầu</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Nội dung yêu cầu</h4>
                     <textarea 
                       name="description" 
                       rows={8} 
-                      className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-slate-50 text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" 
+                      className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" 
                       placeholder="Chi tiết quy trình... (Có thể dán link: https://example.com)" 
                       value={newTaskForm.description}
                       onChange={(e) => setNewTaskForm(prev => ({ ...prev, description: e.target.value }))}
@@ -731,12 +848,12 @@ const AppShell: React.FC = () => {
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Hình ảnh đính kèm ({previewImages.length})</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#FF33E7] pl-4 md:pl-5">Hình ảnh đính kèm ({previewImages.length})</h4>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pl-4 md:pl-6">
                       {previewImages.map((img, i) => (
                         <div
                           key={i}
-                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-pointer hover:border-accent transition-all"
+                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-pointer hover:border-[#FF33E7] transition-all"
                         >
                           <img src={img} className="w-full h-full object-cover" />
                           <button 
@@ -748,7 +865,7 @@ const AppShell: React.FC = () => {
                           </button>
                         </div>
                       ))}
-                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-accent hover:border-accent cursor-pointer transition-colors">
+                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-[#FF33E7] hover:border-[#FF33E7] cursor-pointer transition-colors">
                         <PlusIcon className="w-5 h-5 md:w-6 md:h-6" />
                         <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
                       </label>
@@ -757,7 +874,7 @@ const AppShell: React.FC = () => {
                 </div>
 
                 <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
-                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                  <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
                     {/* Chỉ hiển thị assignee selector nếu không phải Employee */}
                     {currentUser?.role !== UserRole.EMPLOYEE && (
                       <div>
@@ -826,7 +943,7 @@ const AppShell: React.FC = () => {
                       <button 
                         type="submit" 
                         disabled={isSubmitting}
-                        className="w-full py-3 md:py-4 bg-accent text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60"
+                        className="w-full py-3 md:py-4 bg-[#FF33E7] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#E62DD1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60"
                       >
                         {isSubmitting ? 'Đang tạo...' : 'Kích hoạt quy trình'}
                       </button>
@@ -876,21 +993,21 @@ const AppShell: React.FC = () => {
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Nội dung yêu cầu</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Nội dung yêu cầu</h4>
                     <div className="text-slate-600 leading-relaxed md:leading-[2] text-base md:text-lg whitespace-pre-wrap pl-4 md:pl-6">
                       {selectedTask.description ? renderTextWithLinks(selectedTask.description) : 'Không có mô tả chi tiết cho nhiệm vụ này.'}
                     </div>
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Ghi chú</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#FF33E7] pl-4 md:pl-5">Ghi chú</h4>
                     <div className="pl-4 md:pl-6 space-y-4">
                       {selectedTask.notes && selectedTask.notes.length > 0 ? (
                         <div className="space-y-3">
                           {selectedTask.notes.map((note) => {
                             const author = users.find(u => u.id === note.authorId);
                             return (
-                              <div key={note.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                              <div key={note.id} className="bg-white p-4 rounded-lg border border-slate-200">
                                 <div className="flex items-start gap-3 mb-2">
                                   <img src={author?.avatar || currentUser?.avatar} className="w-8 h-8 rounded-full border border-white shadow-sm shrink-0" />
                                   <div className="flex-1">
@@ -923,7 +1040,7 @@ const AppShell: React.FC = () => {
                         <button
                           onClick={handleAddNote}
                           disabled={!newNoteContent.trim() || isAddingNote}
-                          className="px-4 py-2 bg-accent text-white rounded text-sm font-bold hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 py-2 bg-[#FF33E7] text-white rounded text-sm font-bold hover:bg-[#E62DD1] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isAddingNote ? 'Đang thêm...' : 'Thêm ghi chú'}
                         </button>
@@ -933,13 +1050,13 @@ const AppShell: React.FC = () => {
 
                   {selectedTask.imageUrls && selectedTask.imageUrls.length > 0 && (
                     <div className="space-y-4 md:space-y-6">
-                      <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Hình ảnh đính kèm ({selectedTask.imageUrls.length})</h4>
+                      <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#FF33E7] pl-4 md:pl-5">Hình ảnh đính kèm ({selectedTask.imageUrls.length})</h4>
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pl-4 md:pl-6">
                         {selectedTask.imageUrls.map((img, i) => (
                           <div
                             key={i}
                             onClick={() => setLightboxIndex(i)}
-                            className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-zoom-in hover:border-accent transition-all"
+                            className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-zoom-in hover:border-[#FF33E7] transition-all"
                           >
                             <img src={img} className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -953,7 +1070,7 @@ const AppShell: React.FC = () => {
                 </div>
 
                 <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
-                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                  <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
                     <div>
                       <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Nhân sự phụ trách</p>
                       <div className="flex items-center gap-3 md:gap-4">

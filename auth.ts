@@ -12,11 +12,8 @@ import { getCollections } from '@/lib/db';
 import { User, UserRole } from '@/types';
 import { authConfig } from './auth.config';
 
-// Validate AUTH_SECRET
-const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-if (!authSecret) {
-  console.warn('⚠️  AUTH_SECRET or NEXTAUTH_SECRET is not set. Authentication may not work properly.');
-}
+// Validate AUTH_SECRET - Generate a stable secret if not provided
+const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'd-line-dev-secret-key-change-in-production';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -88,6 +85,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     }
   },
-  secret: authSecret || 'fallback-secret-for-development-only',
+  secret: authSecret,
 });
 

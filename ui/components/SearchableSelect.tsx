@@ -167,8 +167,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             w-full px-4 py-2.5 border rounded text-sm
             bg-slate-50 focus:bg-white transition-all cursor-pointer
             flex items-center justify-between gap-2
-            ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-accent'}
-            ${isOpen ? 'border-accent ring-1 ring-accent' : 'border-slate-200'}
+            ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#8907E6]'}
+            ${isOpen ? 'border-[#8907E6] ring-1 ring-[#8907E6]' : 'border-slate-200'}
           `}
         >
           <span className={`flex-1 text-left truncate ${!displayValue ? 'text-slate-400' : 'text-slate-900'}`}>
@@ -209,7 +209,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     setFocusedIndex(-1);
                   }}
                   placeholder={placeholder}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-[#8907E6] focus:border-[#8907E6]"
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
@@ -229,7 +229,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     className={`
                       px-4 py-2.5 text-sm cursor-pointer transition-colors
                       ${value === option.value 
-                        ? 'bg-accent/10 text-accent font-semibold' 
+                        ? 'bg-[#8907E6]/10 text-[#8907E6] font-semibold' 
                         : 'text-slate-700 hover:bg-slate-50'
                       }
                       ${index === focusedIndex ? 'bg-slate-100' : ''}
