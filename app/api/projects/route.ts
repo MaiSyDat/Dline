@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getCollections } from '@/lib/db';
-import { Project } from '@/types';
+import { Project, UserRole } from '@/types';
+import { auth } from '@/auth';
+import { isAdminOrManager } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,6 +20,16 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ ok: false, error: 'Chưa đăng nhập' }, { status: 401 });
+    }
+
+    // Chỉ Admin và Manager có thể tạo project
+    if (!isAdminOrManager(session.user.role)) {
+      return NextResponse.json({ ok: false, error: 'Chỉ quản trị viên và quản lý mới có thể tạo dự án' }, { status: 403 });
+    }
+
     const body = await req.json();
     const {
       name,
@@ -34,6 +46,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Thiếu name hoặc startDate' }, { status: 400 });
     }
 
+    // deadline là optional
     const id = crypto.randomUUID();
     const proj: Project = {
       id,
@@ -42,7 +55,7 @@ export async function POST(req: Request) {
       memberIds,
       status,
       startDate,
-      deadline,
+      deadline, // Optional
       color,
       createdAt: new Date().toISOString(),
       managerId: managerId || memberIds[0] || ''

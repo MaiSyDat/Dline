@@ -34,7 +34,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
       await signOut({ redirect: false });
       router.refresh(); // Reload để cập nhật session
     } catch (error) {
-      console.error('Logout error:', error);
+      // Silently handle logout errors
     } finally {
       setIsLoggingOut(false);
     }

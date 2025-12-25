@@ -30,9 +30,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, data: userWithoutPassword });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Không thể đăng nhập';
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Login error:', error);
-    }
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

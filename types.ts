@@ -57,4 +57,10 @@ export interface Task {
   priority: TaskPriority;
   createdAt: string;
   imageUrls?: string[]; // Danh sách ảnh đính kèm (bug)
+  notes?: Array<{
+    id: string;
+    content: string;
+    authorId: string;
+    createdAt: string;
+  }>; // Ghi chú từ nhân viên
 }

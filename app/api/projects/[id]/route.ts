@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getCollections } from '@/lib/db';
 import { FindOneAndUpdateOptions, WithId } from 'mongodb';
 import { Project } from '@/types';
+import { auth } from '@/auth';
+import { isAdminOrManager } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +13,16 @@ type Params = { params: Promise<{ id: string }> };
 export async function PUT(req: Request, { params }: Params) {
   const { id } = await params;
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ ok: false, error: 'Chưa đăng nhập' }, { status: 401 });
+    }
+
+    // Chỉ Admin và Manager có thể cập nhật project
+    if (!isAdminOrManager(session.user.role)) {
+      return NextResponse.json({ ok: false, error: 'Không có quyền cập nhật dự án' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { projects } = await getCollections();
     const options: FindOneAndUpdateOptions = { returnDocument: 'after' };
@@ -33,6 +45,17 @@ export async function PUT(req: Request, { params }: Params) {
 export async function DELETE(_req: Request, { params }: Params) {
   try {
     const { id } = await params;
+    
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ ok: false, error: 'Chưa đăng nhập' }, { status: 401 });
+    }
+
+    // Chỉ Admin và Manager có thể xóa project
+    if (!isAdminOrManager(session.user.role)) {
+      return NextResponse.json({ ok: false, error: 'Không có quyền xóa dự án' }, { status: 403 });
+    }
+
     const { projects, tasks } = await getCollections();
     await tasks.deleteMany({ projectId: id });
     const res = await projects.deleteOne({ id });

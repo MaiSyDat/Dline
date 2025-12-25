@@ -41,3 +41,15 @@ export function canManagerDeleteUser(managerRole: UserRole | string | undefined,
   return targetUserRole !== UserRole.ADMIN;
 }
 
+/**
+ * Kiểm tra xem manager có thể chỉnh sửa user với role này không
+ * Manager không thể chỉnh sửa Admin
+ */
+export function canManagerEditUser(managerRole: UserRole | string | undefined, targetUserRole: UserRole | string | undefined): boolean {
+  if (managerRole !== UserRole.MANAGER) {
+    return true; // Admin có thể chỉnh sửa bất kỳ ai
+  }
+  // Manager không thể chỉnh sửa Admin
+  return targetUserRole !== UserRole.ADMIN;
+}
+

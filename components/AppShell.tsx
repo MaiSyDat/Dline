@@ -90,8 +90,13 @@ const AppShell: React.FC = () => {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newUserRole, setNewUserRole] = useState<string>(UserRole.EMPLOYEE);
+  const [editUserRole, setEditUserRole] = useState<string>(UserRole.EMPLOYEE);
   const [selectedAvatar, setSelectedAvatar] = useState<string>('');
+  const [editUserAvatar, setEditUserAvatar] = useState<string>('');
+  const [newNoteContent, setNewNoteContent] = useState<string>('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
   
   // Ref để track xem đã load data chưa, tránh load lại không cần thiết
   const hasLoadedRef = useRef(false);
@@ -160,13 +165,16 @@ const AppShell: React.FC = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
+      // Nếu là Employee, tự động assign cho chính họ
+      const assigneeId = currentUser?.role === UserRole.EMPLOYEE ? currentUser.id : newTaskForm.assigneeId;
+      
       const payload = {
         projectId: newTaskForm.projectId,
         title: newTaskForm.title,
         description: newTaskForm.description,
-        assigneeId: newTaskForm.assigneeId,
+        assigneeId,
         startDate: new Date().toISOString(),
-        deadline: newTaskForm.deadline,
+        deadline: newTaskForm.deadline || undefined, // Optional
         status: (newTaskForm.isBug ? TaskStatus.BUG : TaskStatus.NEW) as TaskStatus,
         priority: newTaskForm.priority,
         imageUrls: previewImages.length > 0 ? previewImages : undefined
@@ -198,7 +206,7 @@ const AppShell: React.FC = () => {
         description: f.get('description'),
         memberIds: newProjectMembers,
         startDate: f.get('startDate'),
-        deadline: f.get('deadline'),
+        deadline: f.get('deadline') || undefined, // Optional
         managerId: currentUser?.id,
         status: 'active'
       };
@@ -256,6 +264,34 @@ const AppShell: React.FC = () => {
     }
   };
 
+  const handleUpdateUser = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSubmitting || !selectedUser) return;
+    setIsSubmitting(true);
+    const f = new FormData(e.currentTarget);
+    const payload = {
+      name: f.get('name'),
+      email: f.get('email'),
+      role: editUserRole || selectedUser.role,
+      avatar: editUserAvatar || selectedUser.avatar
+    };
+    try {
+      const res = await fetchJson<{ ok: true; data: User }>(`/api/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      setUsers(prev => prev.map(u => (u.id === selectedUser.id ? res.data : u)));
+      setSelectedUser(null);
+      setEditUserRole(UserRole.EMPLOYEE);
+      setEditUserAvatar('');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Không cập nhật được nhân sự');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleMarkDone = async (task: Task) => {
     if (!task || !task.id) {
       alert('Công việc không hợp lệ');
@@ -280,9 +316,41 @@ const AppShell: React.FC = () => {
         setSelectedTask(res.data);
       }
     } catch (error) {
-      console.error('Error marking task as done:', error);
       const message = error instanceof Error ? error.message : 'Không cập nhật được công việc';
       alert(`Lỗi: ${message}\n\nVui lòng thử lại hoặc reload trang.`);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!selectedTask || !newNoteContent.trim() || !currentUser) return;
+    
+    setIsAddingNote(true);
+    try {
+      const noteId = crypto.randomUUID();
+      const newNote = {
+        id: noteId,
+        content: newNoteContent.trim(),
+        authorId: currentUser.id,
+        createdAt: new Date().toISOString()
+      };
+      
+      const updatedNotes = [...(selectedTask.notes || []), newNote];
+      
+      const url = `/api/tasks/${encodeURIComponent(selectedTask.id)}`;
+      const res = await fetchJson<{ ok: true; data: Task }>(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: updatedNotes })
+      });
+      
+      // Update task in state
+      setTasks(prev => prev.map(t => (t.id === selectedTask.id ? res.data : t)));
+      setSelectedTask(res.data);
+      setNewNoteContent('');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Không thể thêm ghi chú');
+    } finally {
+      setIsAddingNote(false);
     }
   };
 
@@ -385,8 +453,19 @@ const AppShell: React.FC = () => {
                 try {
                   await fetchJson(`/api/users/${userId}`, { method: 'DELETE' });
                   setUsers(prev => prev.filter(u => u.id !== userId));
+                  if (selectedUser?.id === userId) {
+                    setSelectedUser(null);
+                  }
                 } catch (error) {
                   alert(error instanceof Error ? error.message : 'Không xóa được người dùng');
+                }
+              }}
+              onUserClick={(user) => {
+                // Chỉ Admin và Manager mới có thể sửa user
+                if (currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.MANAGER) {
+                  setSelectedUser(user);
+                  setEditUserRole(user.role);
+                  setEditUserAvatar(user.avatar);
                 }
               }}
             />
@@ -402,81 +481,187 @@ const AppShell: React.FC = () => {
       />
 
       {isUserModalOpen && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={() => { setIsUserModalOpen(false); setNewUserRole(UserRole.EMPLOYEE); setSelectedAvatar(''); }}>
-          <div className="bg-white w-full max-w-md rounded-lg shadow-2xl overflow-hidden modal-enter max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 bg-primary text-white flex justify-between items-center shrink-0">
-              <h3 className="text-xs font-black uppercase tracking-widest">Thêm nhân sự</h3>
-              <button onClick={() => { setIsUserModalOpen(false); setNewUserRole(UserRole.EMPLOYEE); setSelectedAvatar(''); }}><XMarkIcon className="w-6 h-6" /></button>
+        <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+          <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={() => { setIsUserModalOpen(false); setNewUserRole(UserRole.EMPLOYEE); setSelectedAvatar(''); }} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Thêm nhân sự</h2>
             </div>
-            <form onSubmit={handleCreateUser} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Họ tên</label>
-                <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white" placeholder="Tên nhân sự..." />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
-                <input required name="email" type="email" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white" placeholder="email@company.com" />
-              </div>
-              <PasswordInput
-                required
-                name="password"
-                placeholder="******"
-                label="Mật khẩu"
-              />
-              <SearchableSelect
-                label="Vai trò"
-                name="role"
-                options={[
-                  { value: UserRole.EMPLOYEE, label: 'Nhân viên' },
-                  { value: UserRole.MANAGER, label: 'Quản lý' },
-                  { value: UserRole.ADMIN, label: 'Quản trị viên' }
-                ]}
-                value={newUserRole}
-                onChange={(value) => setNewUserRole(value)}
-                placeholder="Tìm kiếm vai trò..."
-              />
-              <AvatarSelector
-                label="Avatar"
-                selectedAvatar={selectedAvatar}
-                onSelect={setSelectedAvatar}
-              />
-              <button disabled={isSubmitting} className="w-full py-3.5 bg-primary text-white rounded font-black text-sm uppercase tracking-widest mt-2 disabled:opacity-60">
-                {isSubmitting ? 'Đang tạo...' : 'Tạo tài khoản'}
-              </button>
-            </form>
+            <div className="flex items-center gap-1 md:gap-4">
+              <button onClick={() => { setIsUserModalOpen(false); setNewUserRole(UserRole.EMPLOYEE); setSelectedAvatar(''); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+            <div className="max-w-5xl mx-auto w-full px-4 md:px-8 py-8 md:py-16">
+              <form onSubmit={handleCreateUser} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
+                <div className="lg:col-span-2 space-y-8 md:space-y-12">
+                  <div className="space-y-4 md:space-y-6">
+                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
+                  </div>
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Thông tin tài khoản</h4>
+                    <div className="space-y-4 pl-4 md:pl-6">
+                      <div className="space-y-2">
+                        <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
+                        <input required name="email" type="email" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-slate-600" placeholder="email@company.com" />
+                      </div>
+                      <PasswordInput
+                        required
+                        name="password"
+                        placeholder="******"
+                        label="Mật khẩu"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                    <div>
+                      <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Vai trò</p>
+                      <SearchableSelect
+                        name="role"
+                        options={[
+                          { value: UserRole.EMPLOYEE, label: 'Nhân viên' },
+                          { value: UserRole.MANAGER, label: 'Quản lý' },
+                          { value: UserRole.ADMIN, label: 'Quản trị viên' }
+                        ]}
+                        value={newUserRole}
+                        onChange={(value) => setNewUserRole(value)}
+                        placeholder="Tìm kiếm vai trò..."
+                      />
+                    </div>
+                    <div>
+                      <AvatarSelector
+                        label="Avatar"
+                        selectedAvatar={selectedAvatar}
+                        onSelect={setSelectedAvatar}
+                      />
+                    </div>
+                    <div className="pt-4 md:pt-8">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-primary text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                        {isSubmitting ? 'Đang tạo...' : 'Tạo tài khoản'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedUser && (
+        <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+          <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={() => { setSelectedUser(null); setEditUserRole(UserRole.EMPLOYEE); setEditUserAvatar(''); }} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Chỉnh sửa nhân sự</h2>
+            </div>
+            <div className="flex items-center gap-1 md:gap-4">
+              <button onClick={() => { setSelectedUser(null); setEditUserRole(UserRole.EMPLOYEE); setEditUserAvatar(''); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+            <div className="max-w-5xl mx-auto w-full px-4 md:px-8 py-8 md:py-16">
+              <form onSubmit={handleUpdateUser} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
+                <div className="lg:col-span-2 space-y-8 md:space-y-12">
+                  <div className="space-y-4 md:space-y-6">
+                    <input required name="name" defaultValue={selectedUser.name} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
+                  </div>
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Thông tin tài khoản</h4>
+                    <div className="space-y-4 pl-4 md:pl-6">
+                      <div className="space-y-2">
+                        <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
+                        <input required name="email" type="email" defaultValue={selectedUser.email} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-slate-600" placeholder="email@company.com" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                    <div>
+                      <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Vai trò</p>
+                      <SearchableSelect
+                        name="role"
+                        options={[
+                          { value: UserRole.EMPLOYEE, label: 'Nhân viên' },
+                          { value: UserRole.MANAGER, label: 'Quản lý' },
+                          { value: UserRole.ADMIN, label: 'Quản trị viên' }
+                        ]}
+                        value={editUserRole}
+                        onChange={(value) => setEditUserRole(value)}
+                        placeholder="Tìm kiếm vai trò..."
+                      />
+                    </div>
+                    <div>
+                      <AvatarSelector
+                        label="Avatar"
+                        selectedAvatar={editUserAvatar}
+                        onSelect={setEditUserAvatar}
+                      />
+                    </div>
+                    <div className="pt-4 md:pt-8">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-primary text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                        {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {isProjectModalOpen && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={() => setIsProjectModalOpen(false)}>
-          <div className="bg-white w-full max-w-lg rounded-lg shadow-2xl overflow-hidden modal-enter max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 bg-primary text-white flex justify-between items-center shrink-0">
-              <h3 className="text-xs font-black uppercase tracking-widest">Khởi tạo dự án mới</h3>
-              <button onClick={() => setIsProjectModalOpen(false)}><XMarkIcon className="w-6 h-6" /></button>
+        <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+          <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={() => setIsProjectModalOpen(false)} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Khởi tạo dự án mới</h2>
             </div>
-            <form onSubmit={handleCreateProject} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tên dự án</label>
-                <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white" placeholder="Tên dự án..." />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mô tả</label>
-                <textarea name="description" rows={3} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white" placeholder="Mô tả dự án..." />
-              </div>
-              <SearchableUserSelect users={users} selectedIds={newProjectMembers} onChange={setNewProjectMembers} label="Thành viên" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ngày bắt đầu</label>
-                  <input required name="startDate" type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50" defaultValue={new Date().toISOString().split('T')[0]} />
+            <div className="flex items-center gap-1 md:gap-4">
+              <button onClick={() => setIsProjectModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+            <div className="max-w-5xl mx-auto w-full px-4 md:px-8 py-8 md:py-16">
+              <form onSubmit={handleCreateProject} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
+                <div className="lg:col-span-2 space-y-8 md:space-y-12">
+                  <div className="space-y-4 md:space-y-6">
+                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Tên dự án..." />
+                  </div>
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Mô tả</h4>
+                    <textarea name="description" rows={8} className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-slate-50 text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" placeholder="Mô tả dự án..." />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hạn bàn giao</label>
-                  <input required name="deadline" type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50" />
+                <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                    <SearchableUserSelect users={users} selectedIds={newProjectMembers} onChange={setNewProjectMembers} label="Thành viên" />
+                    <div className="grid grid-cols-1 gap-4 md:gap-6 pt-6 border-t border-slate-200/60">
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><CalendarDaysIcon className="w-4 h-4" /> Ngày bắt đầu</p>
+                        <input required name="startDate" type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white" defaultValue={new Date().toISOString().split('T')[0]} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Hạn bàn giao (tùy chọn)</p>
+                        <input name="deadline" type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white" />
+                      </div>
+                    </div>
+                    <div className="pt-4 md:pt-8">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-primary text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                        {isSubmitting ? 'Đang tạo...' : 'Xác nhận dự án'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <button className="w-full py-3.5 bg-primary text-white rounded font-black text-sm uppercase tracking-widest mt-2">Xác nhận dự án</button>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -573,42 +758,68 @@ const AppShell: React.FC = () => {
 
                 <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
                   <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
-                    <div>
-                      <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Người thực hiện</p>
-                      <SearchableSelect
-                        name="assigneeId"
-                        required
-                        options={[
-                          { value: '', label: '-- Chọn --' },
-                          ...users.map(u => ({ value: u.id, label: u.name }))
-                        ]}
-                        value={newTaskForm.assigneeId}
-                        onChange={(value) => setNewTaskForm(prev => ({ ...prev, assigneeId: value }))}
-                        placeholder="Tìm kiếm người dùng..."
-                      />
-                      {newTaskForm.assigneeId && (
-                        <div className="flex items-center gap-3 md:gap-4 mt-4">
-                          <img src={users.find(u => u.id === newTaskForm.assigneeId)?.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-white shadow-sm" />
+                    {/* Chỉ hiển thị assignee selector nếu không phải Employee */}
+                    {currentUser?.role !== UserRole.EMPLOYEE && (
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Người thực hiện</p>
+                        <SearchableSelect
+                          name="assigneeId"
+                          required
+                          options={[
+                            { value: '', label: '-- Chọn --' },
+                            ...(() => {
+                              // Lọc users theo project members
+                              const selectedProject = projects.find(p => p.id === newTaskForm.projectId);
+                              if (!selectedProject) return users.map(u => ({ value: u.id, label: u.name }));
+                              return users
+                                .filter(u => selectedProject.memberIds.includes(u.id))
+                                .map(u => ({ value: u.id, label: u.name }));
+                            })()
+                          ]}
+                          value={newTaskForm.assigneeId}
+                          onChange={(value) => setNewTaskForm(prev => ({ ...prev, assigneeId: value }))}
+                          placeholder="Tìm kiếm người dùng..."
+                        />
+                        {newTaskForm.assigneeId && (
+                          <div className="flex items-center gap-3 md:gap-4 mt-4">
+                            <img src={users.find(u => u.id === newTaskForm.assigneeId)?.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-white shadow-sm" />
+                            <div>
+                              <p className="font-bold text-slate-900 text-sm md:text-base">{users.find(u => u.id === newTaskForm.assigneeId)?.name}</p>
+                              <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">{users.find(u => u.id === newTaskForm.assigneeId)?.role}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Employee thấy thông tin tự assign */}
+                    {currentUser?.role === UserRole.EMPLOYEE && (
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Người thực hiện</p>
+                        <div className="flex items-center gap-3 md:gap-4">
+                          <img src={currentUser.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-white shadow-sm" />
                           <div>
-                            <p className="font-bold text-slate-900 text-sm md:text-base">{users.find(u => u.id === newTaskForm.assigneeId)?.name}</p>
-                            <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">{users.find(u => u.id === newTaskForm.assigneeId)?.role}</p>
+                            <p className="font-bold text-slate-900 text-sm md:text-base">{currentUser.name}</p>
+                            <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">{currentUser.role}</p>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 gap-4 md:gap-6 pt-6 border-t border-slate-200/60">
-                      <div>
-                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Thời hạn</p>
-                        <input 
-                          required 
-                          name="deadline" 
-                          type="date" 
-                          className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-red-600 text-base md:text-lg" 
-                          value={newTaskForm.deadline}
-                          onChange={(e) => setNewTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
-                        />
-                      </div>
+                      {/* Employee không thể thay đổi deadline */}
+                      {currentUser?.role !== UserRole.EMPLOYEE && (
+                        <div>
+                          <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Thời hạn (tùy chọn)</p>
+                          <input 
+                            name="deadline" 
+                            type="date" 
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-red-600 text-base md:text-lg" 
+                            value={newTaskForm.deadline}
+                            onChange={(e) => setNewTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-4 md:pt-8">
@@ -668,6 +879,55 @@ const AppShell: React.FC = () => {
                     <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Nội dung yêu cầu</h4>
                     <div className="text-slate-600 leading-relaxed md:leading-[2] text-base md:text-lg whitespace-pre-wrap pl-4 md:pl-6">
                       {selectedTask.description ? renderTextWithLinks(selectedTask.description) : 'Không có mô tả chi tiết cho nhiệm vụ này.'}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Ghi chú</h4>
+                    <div className="pl-4 md:pl-6 space-y-4">
+                      {selectedTask.notes && selectedTask.notes.length > 0 ? (
+                        <div className="space-y-3">
+                          {selectedTask.notes.map((note) => {
+                            const author = users.find(u => u.id === note.authorId);
+                            return (
+                              <div key={note.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div className="flex items-start gap-3 mb-2">
+                                  <img src={author?.avatar || currentUser?.avatar} className="w-8 h-8 rounded-full border border-white shadow-sm shrink-0" />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <p className="font-bold text-slate-900 text-sm">{author?.name || 'Người dùng'}</p>
+                                      <span className="text-[9px] text-slate-400">
+                                        {new Date(note.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                    <div className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
+                                      {renderTextWithLinks(note.content)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 text-sm">Chưa có ghi chú nào.</p>
+                      )}
+                      <div className="space-y-2">
+                        <textarea
+                          value={newNoteContent}
+                          onChange={(e) => setNewNoteContent(e.target.value)}
+                          placeholder="Thêm ghi chú (có thể dán link)..."
+                          rows={3}
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-slate-600 leading-relaxed resize-none"
+                        />
+                        <button
+                          onClick={handleAddNote}
+                          disabled={!newNoteContent.trim() || isAddingNote}
+                          className="px-4 py-2 bg-accent text-white rounded text-sm font-bold hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isAddingNote ? 'Đang thêm...' : 'Thêm ghi chú'}
+                        </button>
+                      </div>
                     </div>
                   </div>
 

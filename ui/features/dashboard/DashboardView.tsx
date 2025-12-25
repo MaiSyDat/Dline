@@ -43,7 +43,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const insights = await getGeminiInsights(tasks, users);
       setAiInsights(insights);
     } catch (error) {
-      console.error('Error loading AI insights:', error);
       setAiInsights('Không thể tải AI insights. Vui lòng thử lại sau.');
     } finally {
       setIsLoadingInsights(false);

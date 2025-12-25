@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getCollections } from '@/lib/db';
-import { UserRole } from '@/types';
+import { UserRole, User } from '@/types';
 import { auth } from '@/auth';
-import { isAdminOrManager, canManagerDeleteUser } from '@/lib/permissions';
+import { isAdminOrManager, canManagerDeleteUser, canManagerEditUser } from '@/lib/permissions';
+import { FindOneAndUpdateOptions, WithId } from 'mongodb';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,6 +66,122 @@ export async function DELETE(_req: Request, { params }: Params) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Không thể xóa người dùng';
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+/**
+ * PUT /api/users/[id]
+ * 
+ * Cập nhật thông tin user
+ * - Chỉ Admin và Manager có thể chỉnh sửa user
+ * - Manager không thể chỉnh sửa Admin
+ * - Employee không thể chỉnh sửa bất kỳ user nào
+ */
+export async function PUT(req: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    
+    if (!id) {
+      return NextResponse.json({ ok: false, error: 'Thiếu ID người dùng' }, { status: 400 });
+    }
+
+    // Lấy session để kiểm tra quyền
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ ok: false, error: 'Chưa đăng nhập' }, { status: 401 });
+    }
+
+    const currentUserRole = session.user.role;
+
+    // Chỉ Admin và Manager mới có quyền chỉnh sửa user
+    if (!isAdminOrManager(currentUserRole)) {
+      return NextResponse.json({ ok: false, error: 'Không có quyền chỉnh sửa người dùng' }, { status: 403 });
+    }
+
+    const body = await req.json() as Partial<User>;
+    const { users } = await getCollections();
+    
+    // Lấy thông tin user cần chỉnh sửa
+    const userToEdit = await users.findOne({ id });
+    if (!userToEdit) {
+      return NextResponse.json({ ok: false, error: 'Không tìm thấy người dùng' }, { status: 404 });
+    }
+
+    // Manager không thể chỉnh sửa Admin
+    if (!canManagerEditUser(currentUserRole, userToEdit.role)) {
+      return NextResponse.json({ ok: false, error: 'Quản lý không thể chỉnh sửa tài khoản quản trị viên' }, { status: 403 });
+    }
+
+    // Validate allowed fields (không cho phép thay đổi password qua PUT này)
+    const allowedFields = ['name', 'email', 'role', 'avatar'];
+    const updateData: Partial<User> = {};
+    
+    for (const field of allowedFields) {
+      if (field in body) {
+        if (field === 'email') {
+          // Normalize email
+          (updateData as any)[field] = (body[field] as string).toLowerCase().trim();
+        } else if (field === 'name') {
+          // Trim name
+          (updateData as any)[field] = (body[field] as string).trim();
+        } else {
+          (updateData as any)[field] = body[field as keyof User];
+        }
+      }
+    }
+
+    // Validate role nếu có
+    if (updateData.role && !Object.values(UserRole).includes(updateData.role as UserRole)) {
+      return NextResponse.json({ ok: false, error: 'Role không hợp lệ' }, { status: 400 });
+    }
+
+    // Kiểm tra email trùng lặp nếu có thay đổi email
+    if (updateData.email && updateData.email !== userToEdit.email) {
+      const existed = await users.findOne({ 
+        id: { $ne: id }, // Không phải chính user này
+        email: { $regex: new RegExp(`^${updateData.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
+      if (existed) {
+        return NextResponse.json({ ok: false, error: 'Email đã tồn tại' }, { status: 400 });
+      }
+    }
+
+    // Kiểm tra nếu không có field nào để update
+    if (Object.keys(updateData).length === 0) {
+      // Không có gì để update, trả về user hiện tại
+      const { password, ...userWithoutPassword } = userToEdit;
+      return NextResponse.json({ ok: true, data: userWithoutPassword });
+    }
+
+    // Update user
+    const options: FindOneAndUpdateOptions = { returnDocument: 'after' };
+    const res = await users.findOneAndUpdate(
+      { id },
+      { $set: updateData },
+      options
+    );
+    
+    const updated = res as unknown as { value?: WithId<User> | null };
+    
+    if (!updated || !updated.value) {
+      // Try to fetch the user again to see if update actually worked
+      const checkUser = await users.findOne({ id });
+      if (checkUser) {
+        // Update actually worked, just returnDocument didn't return it
+        const { password, ...userWithoutPassword } = checkUser;
+        return NextResponse.json({ ok: true, data: userWithoutPassword });
+      }
+      
+      return NextResponse.json({ ok: false, error: 'Không thể cập nhật người dùng' }, { status: 500 });
+    }
+    
+    // Không trả về password
+    const { password, ...userWithoutPassword } = updated.value;
+    
+    return NextResponse.json({ ok: true, data: userWithoutPassword });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Không thể cập nhật người dùng';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

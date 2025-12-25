@@ -20,6 +20,8 @@ export interface TeamViewProps {
   currentUserRole?: UserRole | string;
   /** Callback khi xóa user */
   onDeleteUser?: (userId: string) => void;
+  /** Callback khi click vào user card để sửa */
+  onUserClick?: (user: User) => void;
 }
 
 /**
@@ -29,7 +31,8 @@ export const TeamView: React.FC<TeamViewProps> = ({
   users,
   tasks,
   currentUserRole,
-  onDeleteUser
+  onDeleteUser,
+  onUserClick
 }) => {
   // Admin và Manager có quyền giống nhau
   const canManageUsers = currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.MANAGER;
@@ -49,16 +52,18 @@ export const TeamView: React.FC<TeamViewProps> = ({
         return (
           <div
             key={u.id}
-            className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm text-center group hover:border-accent transition-all relative"
+            onClick={() => onUserClick?.(u)}
+            className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm text-center group hover:border-accent transition-all relative cursor-pointer"
           >
             {canDeleteUser(u.role) && onDeleteUser && (
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (confirm(`Xóa người dùng "${u.name}"?`)) {
                     onDeleteUser(u.id);
                   }
                 }}
-                className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+                className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-all z-10"
                 title="Xóa người dùng"
               >
                 <TrashIcon className="w-4 h-4" />

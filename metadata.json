@@ -1,7 +1,0 @@
-{
-  "name": "D-Line Task Manager",
-  "description": "A professional task management and deadline tracking application with employee workload distribution features and AI-powered task insights.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

@@ -20,6 +20,7 @@ export interface AvatarSelectorProps {
 
 /**
  * Danh sách avatar có sẵn trong public/img/avatar
+ * Chỉ cho phép chọn từ các avatar mặc định (avatar1-5, 7-8)
  */
 const AVATAR_OPTIONS = [
   '/img/avatar/avatar1.jpg',

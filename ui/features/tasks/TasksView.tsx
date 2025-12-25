@@ -212,7 +212,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     })
   );
 
-  // Group tasks by status
+  // Group tasks by status and sort by priority (HIGH first) then by due date (soonest first)
   const tasksByStatus = React.useMemo(() => {
     const groups: Record<TaskStatus, Task[]> = {
       [TaskStatus.NEW]: [],
@@ -226,6 +226,23 @@ export const TasksView: React.FC<TasksViewProps> = ({
       if (groups[task.status]) {
         groups[task.status].push(task);
       }
+    });
+
+    // Sort tasks in each group: priority (HIGH first) then by due date (soonest first)
+    const priorityOrder = { [TaskPriority.HIGH]: 0, [TaskPriority.MEDIUM]: 1, [TaskPriority.LOW]: 2 };
+    
+    Object.keys(groups).forEach(status => {
+      groups[status as TaskStatus].sort((a, b) => {
+        // First sort by priority (HIGH first)
+        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+        if (priorityDiff !== 0) return priorityDiff;
+        
+        // Then sort by due date (soonest first, null/undefined last)
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      });
     });
 
     return groups;
@@ -301,8 +318,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
         onTaskUpdate(updatedTaskFromServer);
       }
     } catch (error) {
-      console.error('Error updating task status:', error);
-      
       // Check if it's a network error or actual API error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStatus = error instanceof Error ? (error as any).status : null;
@@ -313,24 +328,18 @@ export const TasksView: React.FC<TasksViewProps> = ({
       
       if (isApiError) {
         // For 500 errors, the update might have actually succeeded
-        // Check if it's a server error (500) - might be a false negative
-        if (errorStatus === 500) {
-          console.warn('Server error 500 - update may have succeeded. Keeping optimistic update.');
-          // Don't revert for 500 errors - they might be false negatives
-          // User can reload if needed
-        } else {
+        // Don't revert for 500 errors - they might be false negatives
+        // User can reload if needed
+        if (errorStatus !== 500) {
           // Revert optimistic update on clear API error (400, 404)
           setOptimisticTasks(prev =>
             prev.map(t => (t.id === taskId ? task : t))
           );
           alert(`Không thể cập nhật trạng thái công việc: ${errorMessage}`);
         }
-      } else {
-        // For network errors or unknown errors, keep optimistic update
-        // The update might have succeeded on the server
-        console.warn('Possible network error during task update. Update may have succeeded. Reload page to verify.');
-        // Don't show alert - user can reload if needed
       }
+      // For network errors or unknown errors, keep optimistic update
+      // The update might have succeeded on the server
     }
   };
 
