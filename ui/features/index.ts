@@ -6,7 +6,6 @@
 
 // Auth
 export { LoginForm } from './auth/LoginForm';
-export type { LoginFormProps } from './auth/LoginForm';
 
 // Tasks
 export { StatusBadge } from './tasks/StatusBadge';

@@ -19,20 +19,29 @@ export interface StatusBadgeProps {
  * StatusBadge component với icon và màu sắc tương ứng
  */
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ task }) => {
+  // Map status sang tiếng Việt
+  const statusLabels: Record<TaskStatus, string> = {
+    [TaskStatus.NEW]: 'Mới',
+    [TaskStatus.BUG]: 'Lỗi',
+    [TaskStatus.IN_PROGRESS]: 'Đang làm',
+    [TaskStatus.FIXED]: 'Đã sửa',
+    [TaskStatus.DONE]: 'Xong'
+  };
+
   // Render badge dựa trên status
   if (task.status === TaskStatus.BUG) {
     return (
       <Badge variant="danger" className="flex items-center gap-1">
         <BugAntIcon className="w-3 h-3" />
-        Lỗi
+        {statusLabels[TaskStatus.BUG]}
       </Badge>
     );
   }
 
   if (task.status === TaskStatus.DONE) {
-    return <Badge variant="success">Xong</Badge>;
+    return <Badge variant="success">{statusLabels[TaskStatus.DONE]}</Badge>;
   }
 
-  return <Badge>{task.status}</Badge>;
+  return <Badge>{statusLabels[task.status] || task.status}</Badge>;
 };
 

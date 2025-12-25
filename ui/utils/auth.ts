@@ -1,8 +1,10 @@
 /**
- * Authentication Utility Functions
+ * Authentication Utility Functions (DEPRECATED)
  * 
- * Quản lý authentication state với localStorage
- * Lưu và khôi phục thông tin user đã đăng nhập
+ * File này đã được thay thế bởi NextAuth v5
+ * Giữ lại để backward compatibility nếu có code cũ còn sử dụng
+ * 
+ * @deprecated Sử dụng NextAuth session thay vì localStorage
  */
 
 import { User } from '@/types';
@@ -10,49 +12,35 @@ import { User } from '@/types';
 const AUTH_STORAGE_KEY = 'dline_auth_user';
 
 /**
- * Lưu user vào localStorage
- * @param user - User object cần lưu
+ * @deprecated Sử dụng NextAuth session thay vì localStorage
  */
 export const saveUser = (user: User): void => {
-  try {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  } catch (error) {
-    console.error('Failed to save user to localStorage:', error);
-  }
+  // Deprecated - không làm gì cả
+  console.warn('saveUser is deprecated. Use NextAuth session instead.');
 };
 
 /**
- * Lấy user từ localStorage
- * @returns User object hoặc null nếu không có
+ * @deprecated Sử dụng NextAuth session thay vì localStorage
  */
 export const getUser = (): User | null => {
-  try {
-    if (typeof window === 'undefined') return null;
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!stored) return null;
-    return JSON.parse(stored) as User;
-  } catch (error) {
-    console.error('Failed to get user from localStorage:', error);
-    return null;
-  }
+  // Deprecated - không làm gì cả
+  console.warn('getUser is deprecated. Use NextAuth session instead.');
+  return null;
 };
 
 /**
- * Xóa user khỏi localStorage (logout)
+ * @deprecated Sử dụng NextAuth signOut thay vì localStorage
  */
 export const removeUser = (): void => {
-  try {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-  } catch (error) {
-    console.error('Failed to remove user from localStorage:', error);
-  }
+  // Deprecated - không làm gì cả
+  console.warn('removeUser is deprecated. Use NextAuth signOut instead.');
 };
 
 /**
- * Kiểm tra xem có user đã đăng nhập không
- * @returns true nếu có user, false nếu không
+ * @deprecated Sử dụng NextAuth session thay vì localStorage
  */
 export const isAuthenticated = (): boolean => {
-  return getUser() !== null;
+  // Deprecated - không làm gì cả
+  console.warn('isAuthenticated is deprecated. Use NextAuth session instead.');
+  return false;
 };
-

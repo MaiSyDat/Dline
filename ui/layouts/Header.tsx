@@ -14,7 +14,7 @@ import {
   FolderPlusIcon,
   PlusIcon
 } from '@heroicons/react/24/outline';
-import { Project } from '@/types';
+import { Project, UserRole } from '@/types';
 
 export interface HeaderProps {
   /** Tab đang active */
@@ -40,18 +40,28 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   selectedProjectId,
   projects,
+  currentUserRole,
   onBack,
   onCreateProject,
   onCreateUser,
   onCreateTask
 }) => {
+  // Admin và Manager có quyền giống nhau
+  const canManageUsers = currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.MANAGER;
   // Lấy title dựa trên activeTab hoặc selectedProject
   const getTitle = () => {
     if (selectedProjectId) {
       const project = projects.find((p) => p.id === selectedProjectId);
       return project?.name || 'Dự án';
     }
-    return activeTab;
+    // Map tab names sang tiếng Việt
+    const tabLabels: Record<typeof activeTab, string> = {
+      dashboard: 'Tổng quan',
+      projects: 'Dự án',
+      tasks: 'Công việc',
+      team: 'Nhân sự'
+    };
+    return tabLabels[activeTab] || activeTab;
   };
 
   return (
@@ -88,17 +98,17 @@ export const Header: React.FC<HeaderProps> = ({
         {activeTab === 'projects' && onCreateProject && (
           <button
             onClick={onCreateProject}
-            className="bg-primary text-white p-2 md:px-4 md:py-2 rounded md:rounded-md text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"
+            className="bg-primary text-white p-2 md:px-4 md:py-2 rounded md:rounded-md text-xs font-bold flex items-center gap-2 hover:bg-[#0A0050] transition-all"
           >
             <FolderPlusIcon className="w-5 h-5 md:w-4 md:h-4" />
             <span className="hidden md:inline">Dự án mới</span>
           </button>
         )}
 
-        {activeTab === 'team' && onCreateUser && (
+        {activeTab === 'team' && onCreateUser && canManageUsers && (
           <button
             onClick={onCreateUser}
-            className="bg-primary text-white p-2 md:px-4 md:py-2 rounded md:rounded-md text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"
+            className="bg-primary text-white p-2 md:px-4 md:py-2 rounded md:rounded-md text-xs font-bold flex items-center gap-2 hover:bg-[#0A0050] transition-all"
           >
             <PlusIcon className="w-5 h-5 md:w-4 md:h-4" />
             <span className="hidden md:inline">Nhân sự mới</span>

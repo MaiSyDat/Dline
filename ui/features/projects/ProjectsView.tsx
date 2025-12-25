@@ -42,8 +42,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <div className="p-2 bg-slate-50 rounded group-hover:bg-accent/5 transition-colors">
                 <BriefcaseIcon className="w-5 h-5 md:w-6 md:h-6 text-slate-300 group-hover:text-accent" />
               </div>
-              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded border border-blue-100 uppercase tracking-widest">
-                Active
+              <span className={`px-2 py-0.5 text-[9px] font-black rounded border uppercase tracking-widest ${
+                p.status === 'active' 
+                  ? 'bg-blue-50 text-blue-600 border-blue-100' 
+                  : p.status === 'completed' 
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                  : 'bg-slate-50 text-slate-600 border-slate-100'
+              }`}>
+                {p.status === 'active' ? 'Đang hoạt động' : p.status === 'completed' ? 'Hoàn thành' : p.status === 'on-hold' ? 'Tạm dừng' : p.status}
               </span>
             </div>
             <h3 className="text-base md:text-lg font-bold text-slate-900 mb-2 group-hover:text-accent transition-colors">

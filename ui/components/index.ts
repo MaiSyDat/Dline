@@ -31,3 +31,12 @@ export type { AvatarProps } from './Avatar';
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
 
+export { LogoutButton } from './LogoutButton';
+export type { LogoutButtonProps } from './LogoutButton';
+
+export { SearchableSelect } from './SearchableSelect';
+export type { SearchableSelectProps, SearchableSelectOption } from './SearchableSelect';
+
+export { AvatarSelector } from './AvatarSelector';
+export type { AvatarSelectorProps } from './AvatarSelector';
+

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRightOnRectangleIcon,
   BriefcaseIcon,
   BugAntIcon,
   CalendarDaysIcon,
@@ -20,10 +19,13 @@ import {
   UserGroupIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
+import { useSession } from 'next-auth/react';
 import { Project, Task, TaskPriority, TaskStatus, User, UserRole } from '@/types';
 
 // UI Components - Import từ thư mục ui
 import { Loading, PasswordInput } from '@/ui/components';
+import { SearchableSelect } from '@/ui/components/SearchableSelect';
+import { AvatarSelector } from '@/ui/components/AvatarSelector';
 import { Sidebar, Header, MobileNav } from '@/ui/layouts';
 import {
   LoginForm,
@@ -35,19 +37,26 @@ import {
   StatusBadge
 } from '@/ui/features';
 import { fetchJson } from '@/ui/utils/api';
-import { saveUser, getUser, removeUser } from '@/ui/utils/auth';
+import { renderTextWithLinks } from '@/ui/utils/linkUtils';
 
 // Kanban board columns configuration đã được move vào TasksView component
 
 const AppShell: React.FC = () => {
-  // Khởi tạo currentUser từ localStorage ngay từ đầu để tránh flash LoginForm
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    // Chỉ chạy trên client side
-    if (typeof window !== 'undefined') {
-      return getUser();
-    }
-    return null;
-  });
+  // Sử dụng NextAuth session thay vì localStorage
+  const { data: session, status } = useSession();
+  
+  // Convert session user thành User type - sử dụng useMemo để tránh tạo object mới mỗi lần render
+  const currentUser: User | null = useMemo(() => {
+    if (!session?.user) return null;
+    return {
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+      role: session.user.role,
+      avatar: session.user.avatar
+    };
+  }, [session?.user?.id, session?.user?.name, session?.user?.email, session?.user?.role, session?.user?.avatar]);
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'tasks' | 'team'>('dashboard');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -59,70 +68,78 @@ const AppShell: React.FC = () => {
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [newProjectMembers, setNewProjectMembers] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [newTaskForm, setNewTaskForm] = useState<{
+    projectId: string;
+    title: string;
+    description: string;
+    assigneeId: string;
+    deadline: string;
+    priority: TaskPriority;
+    isBug: boolean;
+  }>({
+    projectId: '',
+    title: '',
+    description: '',
+    assigneeId: '',
+    deadline: '',
+    priority: TaskPriority.MEDIUM,
+    isBug: false
+  });
   // Kanban drag state đã được move vào TasksView component
   const [isLoading, setIsLoading] = useState(true);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // State để check authentication
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [newUserRole, setNewUserRole] = useState<string>(UserRole.EMPLOYEE);
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('');
+  
+  // Ref để track xem đã load data chưa, tránh load lại không cần thiết
+  const hasLoadedRef = useRef(false);
+  const userIdRef = useRef<string | null>(null);
 
-  // Verify user từ localStorage khi component mount
+  // Load data from API - chỉ load khi đã có session (đã đăng nhập)
   useEffect(() => {
-    const checkAuth = () => {
-      const savedUser = getUser();
-      if (savedUser) {
-        setCurrentUser(savedUser);
+    // Chỉ load data khi session đã được load và có user
+    // Và chỉ load một lần cho mỗi user (tránh reload khi component re-render)
+    if (status === 'authenticated' && currentUser) {
+      // Chỉ load nếu chưa load hoặc user đã thay đổi
+      if (!hasLoadedRef.current || userIdRef.current !== currentUser.id) {
+        hasLoadedRef.current = true;
+        userIdRef.current = currentUser.id;
+        
+        const load = async () => {
+          try {
+            setIsLoading(true);
+            const [{ data: userData }, { data: projectData }, { data: taskData }] = await Promise.all([
+              fetchJson<{ ok: true; data: User[] }>('/api/users'),
+              fetchJson<{ ok: true; data: Project[] }>('/api/projects'),
+              fetchJson<{ ok: true; data: Task[] }>('/api/tasks')
+            ]);
+            setUsers(userData);
+            setProjects(projectData);
+            setTasks(taskData);
+            setGlobalError(null);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Không tải được dữ liệu';
+            setGlobalError(message);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        load();
       }
-      setIsCheckingAuth(false);
-    };
-    checkAuth();
-  }, []);
-
-  // Load data from API - chỉ load khi đã có user (đã đăng nhập)
-  useEffect(() => {
-    // Chỉ load data khi đã check auth xong và có user
-    if (!isCheckingAuth && currentUser) {
-      const load = async () => {
-        try {
-          setIsLoading(true);
-          const [{ data: userData }, { data: projectData }, { data: taskData }] = await Promise.all([
-            fetchJson<{ ok: true; data: User[] }>('/api/users'),
-            fetchJson<{ ok: true; data: Project[] }>('/api/projects'),
-            fetchJson<{ ok: true; data: Task[] }>('/api/tasks')
-          ]);
-          setUsers(userData);
-          setProjects(projectData);
-          setTasks(taskData);
-          setGlobalError(null);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Không tải được dữ liệu';
-          setGlobalError(message);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      load();
-    } else if (!isCheckingAuth && !currentUser) {
-      // Nếu không có user thì không cần load data
+    } else if (status === 'unauthenticated') {
+      // Reset khi logout
+      hasLoadedRef.current = false;
+      userIdRef.current = null;
       setIsLoading(false);
     }
-  }, [isCheckingAuth, currentUser]);
+  }, [status, currentUser?.id]); // Chỉ depend vào status và user ID, không phải toàn bộ currentUser object
 
   // Kanban drag handlers đã được move vào TasksView component
 
-  // Handle login success - lưu user vào localStorage
-  const handleLoginSuccess = (user: User) => {
-    setCurrentUser(user);
-    saveUser(user); // Lưu vào localStorage
-  };
-
-  // Handle logout - xóa user khỏi localStorage
-  const handleLogout = () => {
-    setCurrentUser(null);
-    removeUser(); // Xóa khỏi localStorage
-    setActiveTab('dashboard');
-    setSelectedProjectId(null);
-  };
+  // Logout được xử lý bởi LogoutButton component (sử dụng NextAuth signOut)
+  // Không cần handleLogout function nữa
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -142,17 +159,16 @@ const AppShell: React.FC = () => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
-    const f = new FormData(e.currentTarget);
     try {
       const payload = {
-        projectId: f.get('projectId'),
-        title: f.get('title'),
-        description: f.get('description'),
-        assigneeId: f.get('assigneeId'),
-        startDate: f.get('startDate'),
-        deadline: f.get('deadline'),
-        status: (f.get('isBug') === 'on' ? TaskStatus.BUG : TaskStatus.NEW) as TaskStatus,
-        priority: (f.get('priority') || TaskPriority.MEDIUM) as TaskPriority,
+        projectId: newTaskForm.projectId,
+        title: newTaskForm.title,
+        description: newTaskForm.description,
+        assigneeId: newTaskForm.assigneeId,
+        startDate: new Date().toISOString(),
+        deadline: newTaskForm.deadline,
+        status: (newTaskForm.isBug ? TaskStatus.BUG : TaskStatus.NEW) as TaskStatus,
+        priority: newTaskForm.priority,
         imageUrls: previewImages.length > 0 ? previewImages : undefined
       };
       const res = await fetchJson<{ ok: true; data: Task }>('/api/tasks', {
@@ -163,6 +179,7 @@ const AppShell: React.FC = () => {
       setTasks(prev => [...prev, res.data]);
       setIsTaskModalOpen(false);
       setPreviewImages([]);
+      setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Không tạo được công việc');
     } finally {
@@ -219,8 +236,8 @@ const AppShell: React.FC = () => {
       name: f.get('name'),
       email: f.get('email'),
       password: f.get('password'),
-      role: f.get('role') || UserRole.EMPLOYEE,
-      avatar: f.get('avatar') || undefined
+      role: newUserRole || UserRole.EMPLOYEE,
+      avatar: selectedAvatar || undefined
     };
     try {
       const res = await fetchJson<{ ok: true; data: User }>('/api/users', {
@@ -230,6 +247,8 @@ const AppShell: React.FC = () => {
       });
       setUsers(prev => [...prev, res.data]);
       setIsUserModalOpen(false);
+      setNewUserRole(UserRole.EMPLOYEE);
+      setSelectedAvatar('');
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Không tạo được nhân sự');
     } finally {
@@ -238,16 +257,32 @@ const AppShell: React.FC = () => {
   };
 
   const handleMarkDone = async (task: Task) => {
+    if (!task || !task.id) {
+      alert('Công việc không hợp lệ');
+      return;
+    }
+
     try {
-      const res = await fetchJson<{ ok: true; data: Task }>('/api/tasks/' + task.id, {
-        method: 'PUT',
+      const url = `/api/tasks/${encodeURIComponent(task.id)}`;
+      
+      // Sử dụng PATCH để chỉ update status
+      const res = await fetchJson<{ ok: true; data: Task }>(url, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: TaskStatus.DONE })
       });
+      
+      // Cập nhật task trong state
       setTasks(prev => prev.map(t => (t.id === task.id ? res.data : t)));
-      setSelectedTask(null);
+      
+      // Cập nhật selectedTask nếu đang xem task này
+      if (selectedTask && selectedTask.id === task.id) {
+        setSelectedTask(res.data);
+      }
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không cập nhật được công việc');
+      console.error('Error marking task as done:', error);
+      const message = error instanceof Error ? error.message : 'Không cập nhật được công việc';
+      alert(`Lỗi: ${message}\n\nVui lòng thử lại hoặc reload trang.`);
     }
   };
 
@@ -255,38 +290,19 @@ const AppShell: React.FC = () => {
     return selectedProjectId ? tasks.filter(t => t.projectId === selectedProjectId) : tasks;
   }, [tasks, selectedProjectId]);
 
-  const kanbanGroups = useMemo(() => {
-    const groups: Record<string, Task[]> = { overdue: [], today: [], thisWeek: [], later: [], done: [] };
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-
-    filteredTasks.forEach(t => {
-      if (t.status === TaskStatus.DONE) { groups.done.push(t); return; }
-      if (!t.deadline) { groups.later.push(t); return; }
-      const d = new Date(t.deadline); d.setHours(0, 0, 0, 0);
-      const diff = Math.floor((d.getTime() - now.getTime()) / (86400000));
-
-      if (diff < 0) groups.overdue.push(t);
-      else if (diff === 0) groups.today.push(t);
-      else if (diff > 0 && diff <= 7) groups.thisWeek.push(t);
-      else groups.later.push(t);
-    });
-    return groups;
-  }, [filteredTasks]);
-
   // StatusBadge đã được tách thành component riêng trong ui/features/tasks/StatusBadge.tsx
 
-  // Show loading screen khi đang check auth hoặc đang load data
-  if (isCheckingAuth || (isLoading && currentUser)) {
+  // Hiển thị loading khi đang check session hoặc đang load data
+  if (status === 'loading' || (isLoading && status === 'authenticated')) {
     return <Loading message="Đang tải dữ liệu..." error={globalError} fullScreen />;
   }
 
-  // Protect route: Phải đăng nhập mới vào được ứng dụng
-  // Nếu chưa có user thì hiển thị LoginForm
-  if (!currentUser) {
-    return <LoginForm onLoginSuccess={handleLoginSuccess} />;
+  // Nếu chưa authenticated thì hiển thị LoginForm
+  if (status === 'unauthenticated' || !currentUser) {
+    return <LoginForm />;
   }
 
-  // Nếu đã có user thì hiển thị ứng dụng (không thể quay lại trang đăng nhập)
+  // Nếu đã authenticated thì hiển thị ứng dụng
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden relative">
@@ -304,7 +320,6 @@ const AppShell: React.FC = () => {
           setSelectedProjectId(id); 
           setActiveTab('tasks'); 
         }}
-        onLogout={handleLogout}
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -313,6 +328,7 @@ const AppShell: React.FC = () => {
           activeTab={activeTab}
           selectedProjectId={selectedProjectId}
           projects={projects}
+          currentUserRole={currentUser?.role}
           onBack={() => setSelectedProjectId(null)}
           onCreateProject={() => setIsProjectModalOpen(true)}
           onCreateUser={() => setIsUserModalOpen(true)}
@@ -345,15 +361,35 @@ const AppShell: React.FC = () => {
           {/* Tasks View */}
           {activeTab === 'tasks' && (
             <TasksView
-              kanbanGroups={kanbanGroups}
+              tasks={filteredTasks}
               users={users}
               onTaskClick={setSelectedTask}
+              onTaskUpdate={(updatedTask) => {
+                // Update task in state
+                setTasks(prev => prev.map(t => (t.id === updatedTask.id ? updatedTask : t)));
+                // Update selectedTask if it's the one being updated
+                if (selectedTask && selectedTask.id === updatedTask.id) {
+                  setSelectedTask(updatedTask);
+                }
+              }}
             />
           )}
 
           {/* Team View */}
           {activeTab === 'team' && (
-            <TeamView users={users} tasks={tasks} />
+            <TeamView 
+              users={users} 
+              tasks={tasks}
+              currentUserRole={currentUser?.role}
+              onDeleteUser={async (userId) => {
+                try {
+                  await fetchJson(`/api/users/${userId}`, { method: 'DELETE' });
+                  setUsers(prev => prev.filter(u => u.id !== userId));
+                } catch (error) {
+                  alert(error instanceof Error ? error.message : 'Không xóa được người dùng');
+                }
+              }}
+            />
           )}
         </div>
       </main>
@@ -366,11 +402,11 @@ const AppShell: React.FC = () => {
       />
 
       {isUserModalOpen && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={() => setIsUserModalOpen(false)}>
+        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={() => { setIsUserModalOpen(false); setNewUserRole(UserRole.EMPLOYEE); setSelectedAvatar(''); }}>
           <div className="bg-white w-full max-w-md rounded-lg shadow-2xl overflow-hidden modal-enter max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 bg-primary text-white flex justify-between items-center shrink-0">
               <h3 className="text-xs font-black uppercase tracking-widest">Thêm nhân sự</h3>
-              <button onClick={() => setIsUserModalOpen(false)}><XMarkIcon className="w-6 h-6" /></button>
+              <button onClick={() => { setIsUserModalOpen(false); setNewUserRole(UserRole.EMPLOYEE); setSelectedAvatar(''); }}><XMarkIcon className="w-6 h-6" /></button>
             </div>
             <form onSubmit={handleCreateUser} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
               <div className="space-y-1">
@@ -387,18 +423,23 @@ const AppShell: React.FC = () => {
                 placeholder="******"
                 label="Mật khẩu"
               />
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vai trò</label>
-                <select name="role" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50">
-                  <option value={UserRole.EMPLOYEE}>Employee</option>
-                  <option value={UserRole.MANAGER}>Manager</option>
-                  <option value={UserRole.ADMIN}>Admin</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avatar (tuỳ chọn)</label>
-                <input name="avatar" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 focus:bg-white" placeholder="https://..." />
-              </div>
+              <SearchableSelect
+                label="Vai trò"
+                name="role"
+                options={[
+                  { value: UserRole.EMPLOYEE, label: 'Nhân viên' },
+                  { value: UserRole.MANAGER, label: 'Quản lý' },
+                  { value: UserRole.ADMIN, label: 'Quản trị viên' }
+                ]}
+                value={newUserRole}
+                onChange={(value) => setNewUserRole(value)}
+                placeholder="Tìm kiếm vai trò..."
+              />
+              <AvatarSelector
+                label="Avatar"
+                selectedAvatar={selectedAvatar}
+                onSelect={setSelectedAvatar}
+              />
               <button disabled={isSubmitting} className="w-full py-3.5 bg-primary text-white rounded font-black text-sm uppercase tracking-widest mt-2 disabled:opacity-60">
                 {isSubmitting ? 'Đang tạo...' : 'Tạo tài khoản'}
               </button>
@@ -441,67 +482,148 @@ const AppShell: React.FC = () => {
       )}
 
       {isTaskModalOpen && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={() => setIsTaskModalOpen(false)}>
-          <div className="bg-white w-full max-w-xl rounded-lg shadow-2xl overflow-hidden modal-enter flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 bg-accent text-white flex justify-between items-center shrink-0">
-              <h3 className="text-xs font-black uppercase tracking-widest">Giao việc mới</h3>
-              <button onClick={() => setIsTaskModalOpen(false)}><XMarkIcon className="w-6 h-6" /></button>
+        <div className="fixed inset-0 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+          <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={() => { setIsTaskModalOpen(false); setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', deadline: '', priority: TaskPriority.MEDIUM, isBug: false }); setPreviewImages([]); }} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Giao việc mới</h2>
             </div>
-            <form onSubmit={handleCreateTask} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <BugAntIcon className="w-5 h-5 text-red-500" />
-                  <span className="text-[10px] font-black text-slate-700 uppercase">Chế độ báo lỗi (BUG)</span>
-                </div>
-                <input name="isBug" type="checkbox" className="w-5 h-5 rounded accent-red-500" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dự án</label>
-                <select required name="projectId" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50">
-                  <option value="">-- Lựa chọn dự án --</option>
-                  {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tiêu đề</label>
-                <input required name="title" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50" placeholder="Cần làm gì..." />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mô tả</label>
-                <textarea name="description" rows={3} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50" placeholder="Chi tiết quy trình..." />
-              </div>
+            <div className="flex items-center gap-1 md:gap-4">
+              <button onClick={() => { setIsTaskModalOpen(false); setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', deadline: '', priority: TaskPriority.MEDIUM, isBug: false }); setPreviewImages([]); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+            </div>
+          </div>
 
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><PhotoIcon className="w-4 h-4" /> Đính kèm ảnh ({previewImages.length})</label>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  {previewImages.map((img, i) => (
-                    <div key={i} className="relative w-20 h-20 shrink-0 rounded-md overflow-hidden border border-slate-200">
-                      <img src={img} className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => setPreviewImages(prev => prev.filter((_, idx) => idx !== i))} className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><XMarkIcon className="w-4 h-4" /></button>
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+            <div className="max-w-5xl mx-auto w-full px-4 md:px-8 py-8 md:py-16">
+              <form onSubmit={handleCreateTask} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
+                <div className="lg:col-span-2 space-y-8 md:space-y-12">
+                  <div className="space-y-4 md:space-y-6">
+                    <div className="flex gap-3 items-center flex-wrap">
+                      <select 
+                        name="priority" 
+                        className="px-3 py-1.5 border border-slate-200 rounded text-xs bg-white"
+                        value={newTaskForm.priority}
+                        onChange={(e) => setNewTaskForm(prev => ({ ...prev, priority: e.target.value as TaskPriority }))}
+                      >
+                        <option value={TaskPriority.LOW}>Thấp</option>
+                        <option value={TaskPriority.MEDIUM}>Trung bình</option>
+                        <option value={TaskPriority.HIGH}>Cao</option>
+                      </select>
                     </div>
-                  ))}
-                  <label className="w-20 h-20 shrink-0 border-2 border-dashed border-slate-200 rounded-md flex flex-col items-center justify-center text-slate-300 hover:text-accent hover:border-accent cursor-pointer">
-                    <PlusIcon className="w-5 h-5" />
-                    <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
-                  </label>
-                </div>
-              </div>
+                    <SearchableSelect
+                      label="Dự án"
+                      name="projectId"
+                      required
+                      options={[
+                        { value: '', label: '-- Lựa chọn dự án --' },
+                        ...projects.map(p => ({ value: p.id, label: p.name }))
+                      ]}
+                      value={newTaskForm.projectId}
+                      onChange={(value) => setNewTaskForm(prev => ({ ...prev, projectId: value }))}
+                      placeholder="Tìm kiếm dự án..."
+                    />
+                    <input 
+                      required 
+                      name="title" 
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" 
+                      placeholder="Tiêu đề công việc..." 
+                      value={newTaskForm.title}
+                      onChange={(e) => setNewTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Người thực hiện</label>
-                  <select required name="assigneeId" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50">
-                    <option value="">-- Chọn --</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Nội dung yêu cầu</h4>
+                    <textarea 
+                      name="description" 
+                      rows={8} 
+                      className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-slate-50 text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" 
+                      placeholder="Chi tiết quy trình... (Có thể dán link: https://example.com)" 
+                      value={newTaskForm.description}
+                      onChange={(e) => setNewTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Hình ảnh đính kèm ({previewImages.length})</h4>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pl-4 md:pl-6">
+                      {previewImages.map((img, i) => (
+                        <div
+                          key={i}
+                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-pointer hover:border-accent transition-all"
+                        >
+                          <img src={img} className="w-full h-full object-cover" />
+                          <button 
+                            type="button" 
+                            onClick={() => setPreviewImages(prev => prev.filter((_, idx) => idx !== i))} 
+                            className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                          >
+                            <XMarkIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-accent hover:border-accent cursor-pointer transition-colors">
+                        <PlusIcon className="w-5 h-5 md:w-6 md:h-6" />
+                        <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
+                      </label>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hạn chót</label>
-                  <input required name="deadline" type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-red-500" />
+
+                <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+                  <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                    <div>
+                      <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Người thực hiện</p>
+                      <SearchableSelect
+                        name="assigneeId"
+                        required
+                        options={[
+                          { value: '', label: '-- Chọn --' },
+                          ...users.map(u => ({ value: u.id, label: u.name }))
+                        ]}
+                        value={newTaskForm.assigneeId}
+                        onChange={(value) => setNewTaskForm(prev => ({ ...prev, assigneeId: value }))}
+                        placeholder="Tìm kiếm người dùng..."
+                      />
+                      {newTaskForm.assigneeId && (
+                        <div className="flex items-center gap-3 md:gap-4 mt-4">
+                          <img src={users.find(u => u.id === newTaskForm.assigneeId)?.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-white shadow-sm" />
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm md:text-base">{users.find(u => u.id === newTaskForm.assigneeId)?.name}</p>
+                            <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">{users.find(u => u.id === newTaskForm.assigneeId)?.role}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:gap-6 pt-6 border-t border-slate-200/60">
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Thời hạn</p>
+                        <input 
+                          required 
+                          name="deadline" 
+                          type="date" 
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-red-600 text-base md:text-lg" 
+                          value={newTaskForm.deadline}
+                          onChange={(e) => setNewTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-4 md:pt-8">
+                      <button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="w-full py-3 md:py-4 bg-accent text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60"
+                      >
+                        {isSubmitting ? 'Đang tạo...' : 'Kích hoạt quy trình'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <button type="submit" className="w-full py-3.5 bg-accent text-white rounded font-black text-sm uppercase tracking-widest mt-2">Kích hoạt quy trình</button>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -535,14 +657,18 @@ const AppShell: React.FC = () => {
                   <div className="space-y-4 md:space-y-6">
                     <div className="flex gap-3 items-center flex-wrap">
                       <StatusBadge task={selectedTask} />
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${selectedTask.priority === TaskPriority.HIGH ? 'bg-red-50 text-red-500 border-red-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>{selectedTask.priority}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${selectedTask.priority === TaskPriority.HIGH ? 'bg-red-50 text-red-500 border-red-100' : selectedTask.priority === TaskPriority.MEDIUM ? 'bg-yellow-50 text-yellow-500 border-yellow-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                        {selectedTask.priority === TaskPriority.HIGH ? 'Cao' : selectedTask.priority === TaskPriority.MEDIUM ? 'Trung bình' : 'Thấp'}
+                      </span>
                     </div>
                     <h2 className="text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight">{selectedTask.title}</h2>
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
                     <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-primary pl-4 md:pl-5">Nội dung yêu cầu</h4>
-                    <div className="text-slate-600 leading-relaxed md:leading-[2] text-base md:text-lg whitespace-pre-wrap pl-4 md:pl-6">{selectedTask.description || 'Không có mô tả chi tiết cho nhiệm vụ này.'}</div>
+                    <div className="text-slate-600 leading-relaxed md:leading-[2] text-base md:text-lg whitespace-pre-wrap pl-4 md:pl-6">
+                      {selectedTask.description ? renderTextWithLinks(selectedTask.description) : 'Không có mô tả chi tiết cho nhiệm vụ này.'}
+                    </div>
                   </div>
 
                   {selectedTask.imageUrls && selectedTask.imageUrls.length > 0 && (
@@ -591,9 +717,14 @@ const AppShell: React.FC = () => {
                     </div>
 
                     <div className="pt-4 md:pt-8">
-                      {selectedTask.assigneeId === currentUser.id && selectedTask.status !== TaskStatus.DONE ? (
+                      {selectedTask.assigneeId === currentUser?.id && selectedTask.status !== TaskStatus.DONE ? (
                         <button
-                          onClick={() => handleMarkDone(selectedTask)}
+                          type="button"
+                          onClick={() => {
+                            if (selectedTask) {
+                              handleMarkDone(selectedTask);
+                            }
+                          }}
                           className="w-full py-3 md:py-4 bg-emerald-600 text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest"
                         >
                           <CheckIcon className="w-5 h-5 md:w-6 md:h-6" /> Hoàn thành
@@ -640,7 +771,7 @@ const AppShell: React.FC = () => {
             <img
               src={selectedTask.imageUrls[lightboxIndex]}
               className="w-full h-full object-contain shadow-2xl animate-in zoom-in-90 duration-300"
-              alt="Lightbox view"
+              alt="Xem ảnh"
             />
             <div className="absolute -bottom-10 md:-bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/60 font-black text-[10px] md:text-xs uppercase tracking-widest">
               <span>{lightboxIndex + 1}</span>

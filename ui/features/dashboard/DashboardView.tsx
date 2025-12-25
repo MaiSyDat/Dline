@@ -6,10 +6,12 @@
 
 'use client';
 
-import React from 'react';
-import { BriefcaseIcon, Squares2X2Icon, CheckIcon, BugAntIcon } from '@heroicons/react/24/outline';
+import React, { useState } from 'react';
+import { BriefcaseIcon, Squares2X2Icon, CheckIcon, BugAntIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Project, Task, TaskStatus, User } from '@/types';
 import { StatusBadge } from '../tasks/StatusBadge';
+import { getGeminiInsights } from '@/services/geminiService';
+import { Button } from '../../components/Button';
 
 export interface DashboardViewProps {
   /** Danh sách projects */
@@ -31,6 +33,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   users,
   onTaskClick
 }) => {
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+
+  // Load AI insights using Server Action
+  const handleLoadInsights = async () => {
+    setIsLoadingInsights(true);
+    try {
+      const insights = await getGeminiInsights(tasks, users);
+      setAiInsights(insights);
+    } catch (error) {
+      console.error('Error loading AI insights:', error);
+      setAiInsights('Không thể tải AI insights. Vui lòng thử lại sau.');
+    } finally {
+      setIsLoadingInsights(false);
+    }
+  };
+
   return (
     <div className="space-y-6 md:space-y-10 modal-enter max-w-7xl mx-auto">
       {/* Stats cards */}
@@ -76,7 +95,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <div className="flex items-center gap-4 md:gap-8 shrink-0">
                 <div className="text-right hidden sm:block">
-                  <p className="text-[9px] font-black text-slate-300 uppercase">Deadline</p>
+                  <p className="text-[9px] font-black text-slate-300 uppercase">Hạn chót</p>
                   <p className="text-xs font-bold text-slate-500">
                     {new Date(t.deadline || '').toLocaleDateString('vi-VN')}
                   </p>
@@ -84,12 +103,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <img
                   src={users.find(u => u.id === t.assigneeId)?.avatar}
                   className="w-6 h-6 md:w-8 md:h-8 rounded-full border border-slate-100 shadow-sm"
-                  alt="Assignee"
+                  alt="Người thực hiện"
                 />
               </div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* AI Insights Section */}
+      <div className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm">
+        <div className="flex justify-between items-center mb-6 md:mb-8">
+          <div className="flex items-center gap-3">
+            <SparklesIcon className="w-5 h-5 text-accent" />
+            <h3 className="font-black text-slate-900 text-[10px] md:text-sm uppercase tracking-widest">
+              Phân tích AI
+            </h3>
+          </div>
+          {!aiInsights && (
+            <Button
+              onClick={handleLoadInsights}
+              loading={isLoadingInsights}
+              variant="accent"
+              size="sm"
+            >
+              Tạo Insights
+            </Button>
+          )}
+        </div>
+        {aiInsights ? (
+          <div className="prose prose-sm max-w-none">
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+              {aiInsights}
+            </p>
+            <div className="mt-4">
+              <Button
+                onClick={handleLoadInsights}
+                loading={isLoadingInsights}
+                variant="ghost"
+                size="sm"
+              >
+                Tải lại
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400 italic">
+            Nhấn "Tạo Insights" để nhận phân tích AI về workload và deadlines của team.
+          </p>
+        )}
       </div>
     </div>
   );

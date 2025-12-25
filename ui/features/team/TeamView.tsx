@@ -7,14 +7,19 @@
 'use client';
 
 import React from 'react';
-import { Task, TaskStatus, User } from '@/types';
+import { Task, TaskStatus, User, UserRole } from '@/types';
 import { Avatar } from '../../components/Avatar';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 export interface TeamViewProps {
   /** Danh sách users */
   users: User[];
   /** Danh sách tasks */
   tasks: Task[];
+  /** Role của user hiện tại */
+  currentUserRole?: UserRole | string;
+  /** Callback khi xóa user */
+  onDeleteUser?: (userId: string) => void;
 }
 
 /**
@@ -22,8 +27,19 @@ export interface TeamViewProps {
  */
 export const TeamView: React.FC<TeamViewProps> = ({
   users,
-  tasks
+  tasks,
+  currentUserRole,
+  onDeleteUser
 }) => {
+  // Admin và Manager có quyền giống nhau
+  const canManageUsers = currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.MANAGER;
+  
+  // Manager không thể xóa Admin
+  const canDeleteUser = (targetUserRole: UserRole | string) => {
+    if (!canManageUsers) return false;
+    if (currentUserRole === UserRole.MANAGER && targetUserRole === UserRole.ADMIN) return false;
+    return true;
+  };
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 modal-enter max-w-7xl mx-auto">
       {users.map(u => {
@@ -33,8 +49,21 @@ export const TeamView: React.FC<TeamViewProps> = ({
         return (
           <div
             key={u.id}
-            className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm text-center group hover:border-accent transition-all"
+            className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm text-center group hover:border-accent transition-all relative"
           >
+            {canDeleteUser(u.role) && onDeleteUser && (
+              <button
+                onClick={() => {
+                  if (confirm(`Xóa người dùng "${u.name}"?`)) {
+                    onDeleteUser(u.id);
+                  }
+                }}
+                className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+                title="Xóa người dùng"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            )}
             <Avatar
               src={u.avatar}
               name={u.name}
@@ -44,7 +73,7 @@ export const TeamView: React.FC<TeamViewProps> = ({
             />
             <h4 className="font-bold text-slate-900 group-hover:text-accent">{u.name}</h4>
             <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase mb-6 tracking-widest">
-              {u.role}
+              {u.role === 'admin' ? 'Quản trị viên' : u.role === 'manager' ? 'Quản lý' : u.role === 'employee' ? 'Nhân viên' : u.role}
             </p>
             <div className="pt-6 border-t border-slate-50 flex justify-around">
               <div className="text-center">

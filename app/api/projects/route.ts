@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       status = 'active',
       startDate,
       deadline,
-      color = '#0F172A',
+      color = '#090041',
       managerId
     } = body as Partial<Project>;
 

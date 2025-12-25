@@ -33,7 +33,7 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   // Map variant sang Tailwind classes
   const variantClasses = {
-    primary: 'bg-primary text-white hover:bg-slate-800',
+    primary: 'bg-primary text-white hover:bg-[#0A0050]',
     accent: 'bg-accent text-white hover:bg-blue-600 shadow-lg shadow-blue-500/20',
     danger: 'bg-red-500 text-white hover:bg-red-600',
     success: 'bg-emerald-600 text-white hover:bg-emerald-700',

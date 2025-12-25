@@ -12,11 +12,10 @@ import {
   HomeIcon,
   BriefcaseIcon,
   Squares2X2Icon,
-  UserGroupIcon,
-  ArrowRightOnRectangleIcon
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 import { User, Project } from '@/types';
-import { Avatar } from '@/ui/components/Avatar';
+import { Avatar, LogoutButton } from '@/ui/components';
 
 export interface SidebarProps {
   /** User hiện tại đang đăng nhập */
@@ -31,8 +30,6 @@ export interface SidebarProps {
   onTabChange: (tab: 'dashboard' | 'projects' | 'tasks' | 'team') => void;
   /** Callback khi click project (nhận string hoặc null để clear) */
   onProjectSelect: (projectId: string | null) => void;
-  /** Callback khi logout */
-  onLogout: () => void;
 }
 
 /**
@@ -44,8 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedProjectId,
   projects,
   onTabChange,
-  onProjectSelect,
-  onLogout
+  onProjectSelect
 }) => {
   // Handle tab change và clear selected project
   const handleTabClick = (tab: 'dashboard' | 'projects' | 'tasks' | 'team') => {
@@ -65,11 +61,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="hidden md:flex w-64 bg-primary flex-col shrink-0">
       {/* Logo */}
-      <div className="p-8 flex items-center gap-3 border-b border-white/5">
-        <div className="w-8 h-8 bg-accent rounded flex items-center justify-center text-white font-black">
-          D
-        </div>
-        <span className="text-white font-bold tracking-tight">D-LINE PRO</span>
+      <div className="py-2 flex items-center border-b border-white/5">
+        <img 
+          src="/img/logo/logo.png" 
+          alt="D-LINE PRO" 
+          className="w-full h-[100px] object-contain"
+        />
       </div>
 
       {/* Navigation menu */}
@@ -147,19 +144,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* User profile footer */}
-      <div className="p-4 bg-[#0A0F1E] flex items-center gap-3">
+      <div className="p-4 bg-[#070030] flex items-center gap-3">
         <Avatar src={currentUser.avatar} name={currentUser.name} size="md" bordered />
         <div className="flex-1 min-w-0">
           <p className="text-xs text-white font-bold truncate">{currentUser.name}</p>
           <p className="text-[9px] text-slate-500 uppercase font-black">{currentUser.role}</p>
         </div>
-        <button
-          onClick={onLogout}
-          className="p-2 text-slate-500 hover:text-red-400 transition-colors"
-          aria-label="Đăng xuất"
-        >
-          <ArrowRightOnRectangleIcon className="w-5 h-5" />
-        </button>
+        <LogoutButton variant="icon" />
       </div>
     </aside>
   );
