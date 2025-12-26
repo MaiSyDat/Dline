@@ -59,7 +59,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             image: user.avatar // NextAuth expects 'image' field
           };
         } catch (error) {
-          console.error('Auth error:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Auth error:', error);
+          }
           return null;
         }
       }

@@ -1,29 +1,29 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  BriefcaseIcon,
-  BugAntIcon,
-  CalendarDaysIcon,
-  CheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ClockIcon,
-  FolderPlusIcon,
-  HomeIcon,
-  MagnifyingGlassIcon,
-  PhotoIcon,
-  PlusIcon,
-  Squares2X2Icon,
-  TrashIcon,
-  UserGroupIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+// Tree-shaking: chỉ import icons cần thiết
+import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
+import BugAntIcon from '@heroicons/react/24/outline/BugAntIcon';
+import CalendarDaysIcon from '@heroicons/react/24/outline/CalendarDaysIcon';
+import CheckIcon from '@heroicons/react/24/outline/CheckIcon';
+import ChevronLeftIcon from '@heroicons/react/24/outline/ChevronLeftIcon';
+import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
+import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
+import FolderPlusIcon from '@heroicons/react/24/outline/FolderPlusIcon';
+import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
+import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
+import PhotoIcon from '@heroicons/react/24/outline/PhotoIcon';
+import PencilIcon from '@heroicons/react/24/outline/PencilIcon';
+import PlusIcon from '@heroicons/react/24/outline/PlusIcon';
+import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
+import TrashIcon from '@heroicons/react/24/outline/TrashIcon';
+import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
+import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import { useSession } from 'next-auth/react';
 import { Project, Task, TaskPriority, TaskStatus, User, UserRole } from '@/types';
 
 // UI Components - Import từ thư mục ui
-import { Loading, PasswordInput } from '@/ui/components';
+import { Loading, PasswordInput, ConfirmModal } from '@/ui/components';
 import { SearchableSelect } from '@/ui/components/SearchableSelect';
 import { AvatarSelector } from '@/ui/components/AvatarSelector';
 import { Sidebar, Header, MobileNav } from '@/ui/layouts';
@@ -33,6 +33,7 @@ import {
   DashboardView,
   ProjectsView,
   TasksView,
+  AllTasksView,
   TeamView,
   StatusBadge
 } from '@/ui/features';
@@ -55,7 +56,7 @@ const AppShell: React.FC = () => {
       role: session.user.role,
       avatar: session.user.avatar
     };
-  }, [session?.user?.id, session?.user?.name, session?.user?.email, session?.user?.role, session?.user?.avatar]);
+  }, [session?.user]); // Chỉ depend vào toàn bộ user object thay vì từng field
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'tasks' | 'team'>('dashboard');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -63,6 +64,8 @@ const AppShell: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+  const [editTaskAssigneeId, setEditTaskAssigneeId] = useState<string>('');
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -75,6 +78,7 @@ const AppShell: React.FC = () => {
     title: string;
     description: string;
     assigneeId: string;
+    startDate: string;
     deadline: string;
     priority: TaskPriority;
     isBug: boolean;
@@ -83,6 +87,7 @@ const AppShell: React.FC = () => {
     title: '',
     description: '',
     assigneeId: '',
+    startDate: new Date().toISOString().split('T')[0],
     deadline: '',
     priority: TaskPriority.MEDIUM,
     isBug: false
@@ -93,12 +98,82 @@ const AppShell: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [currentUserPassword, setCurrentUserPassword] = useState<string>('');
   const [newUserRole, setNewUserRole] = useState<string>(UserRole.EMPLOYEE);
   const [editUserRole, setEditUserRole] = useState<string>(UserRole.EMPLOYEE);
   const [selectedAvatar, setSelectedAvatar] = useState<string>('');
   const [editUserAvatar, setEditUserAvatar] = useState<string>('');
   const [newNoteContent, setNewNoteContent] = useState<string>('');
   const [isAddingNote, setIsAddingNote] = useState(false);
+  
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    type?: 'confirm' | 'alert';
+    confirmText?: string;
+    cancelText?: string;
+    confirmVariant?: 'primary' | 'danger' | 'warning';
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null>(null);
+  
+  // Helper function để hiển thị confirm modal
+  const showConfirm = (config: {
+    title?: string;
+    message: string;
+    type?: 'confirm' | 'alert';
+    confirmText?: string;
+    cancelText?: string;
+    confirmVariant?: 'primary' | 'danger' | 'warning';
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }) => {
+    setConfirmModal({
+      isOpen: true,
+      ...config,
+      onCancel: config.onCancel || (() => setConfirmModal(null))
+    });
+  };
+  
+  // Helper function để hiển thị alert
+  const showAlert = (message: string, title?: string) => {
+    return new Promise<void>((resolve) => {
+      showConfirm({
+        title,
+        message,
+        type: 'alert',
+        onConfirm: () => {
+          setConfirmModal(null);
+          resolve();
+        }
+      });
+    });
+  };
+  
+  // Helper function để hiển thị confirm
+  const showConfirmDialog = (config: {
+    title?: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    confirmVariant?: 'primary' | 'danger' | 'warning';
+  }): Promise<boolean> => {
+    return new Promise((resolve) => {
+      showConfirm({
+        ...config,
+        onConfirm: () => {
+          setConfirmModal(null);
+          resolve(true);
+        },
+        onCancel: () => {
+          setConfirmModal(null);
+          resolve(false);
+        }
+      });
+    });
+  };
   
   // Ref để track xem đã load data chưa, tránh load lại không cần thiết
   const hasLoadedRef = useRef(false);
@@ -170,12 +245,15 @@ const AppShell: React.FC = () => {
       // Nếu là Employee, tự động assign cho chính họ
       const assigneeId = currentUser?.role === UserRole.EMPLOYEE ? currentUser.id : newTaskForm.assigneeId;
       
+      // Sử dụng selectedProjectId nếu có, nếu không thì dùng projectId từ form
+      const projectId = selectedProjectId || newTaskForm.projectId;
+      
       const payload = {
-        projectId: newTaskForm.projectId,
+        projectId,
         title: newTaskForm.title,
         description: newTaskForm.description,
         assigneeId,
-        startDate: new Date().toISOString(),
+        startDate: newTaskForm.startDate,
         deadline: newTaskForm.deadline || undefined, // Optional
         status: (newTaskForm.isBug ? TaskStatus.BUG : TaskStatus.NEW) as TaskStatus,
         priority: newTaskForm.priority,
@@ -189,9 +267,9 @@ const AppShell: React.FC = () => {
       setTasks(prev => [...prev, res.data]);
       setIsTaskModalOpen(false);
       setPreviewImages([]);
-      setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
+      setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', startDate: new Date().toISOString().split('T')[0], deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không tạo được công việc');
+      await showAlert(error instanceof Error ? error.message : 'Không tạo được công việc', 'Lỗi');
     } finally {
       setIsSubmitting(false);
     }
@@ -222,7 +300,7 @@ const AppShell: React.FC = () => {
       setSelectedProject(null);
       setNewProjectMembers([]);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không cập nhật được dự án');
+      await showAlert(error instanceof Error ? error.message : 'Không cập nhật được dự án', 'Lỗi');
     } finally {
       setIsSubmitting(false);
     }
@@ -253,21 +331,21 @@ const AppShell: React.FC = () => {
       setIsProjectModalOpen(false);
       setNewProjectMembers([]);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không tạo được dự án');
+      await showAlert(error instanceof Error ? error.message : 'Không tạo được dự án', 'Lỗi');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = useCallback(async (taskId: string) => {
     try {
       await fetchJson('/api/tasks/' + taskId, { method: 'DELETE' });
       setTasks(prev => prev.filter(t => t.id !== taskId));
       setSelectedTask(null);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không xóa được công việc');
+      await showAlert(error instanceof Error ? error.message : 'Không xóa được công việc', 'Lỗi');
     }
-  };
+  }, [showAlert]);
 
   const handleCreateUser = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -292,7 +370,7 @@ const AppShell: React.FC = () => {
       setNewUserRole(UserRole.EMPLOYEE);
       setSelectedAvatar('');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không tạo được nhân sự');
+      await showAlert(error instanceof Error ? error.message : 'Không tạo được nhân sự', 'Lỗi');
     } finally {
       setIsSubmitting(false);
     }
@@ -303,12 +381,17 @@ const AppShell: React.FC = () => {
     if (isSubmitting || !selectedUser) return;
     setIsSubmitting(true);
     const f = new FormData(e.currentTarget);
-    const payload = {
+    const password = f.get('password') as string;
+    const payload: any = {
       name: f.get('name'),
       email: f.get('email'),
       role: editUserRole || selectedUser.role,
       avatar: editUserAvatar || selectedUser.avatar
     };
+    // Chỉ gửi password nếu có nhập (không rỗng)
+    if (password && password.trim()) {
+      payload.password = password.trim();
+    }
     try {
       const res = await fetchJson<{ ok: true; data: User }>(`/api/users/${selectedUser.id}`, {
         method: 'PUT',
@@ -319,39 +402,68 @@ const AppShell: React.FC = () => {
       setSelectedUser(null);
       setEditUserRole(UserRole.EMPLOYEE);
       setEditUserAvatar('');
+      setCurrentUserPassword('');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không cập nhật được nhân sự');
+      await showAlert(error instanceof Error ? error.message : 'Không cập nhật được nhân sự', 'Lỗi');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleMarkDone = async (task: Task) => {
-    if (!task || !task.id) {
-      alert('Công việc không hợp lệ');
+  const handleUpdateTaskStatus = useCallback(async (taskId: string, newStatus: TaskStatus) => {
+    if (!taskId) {
+      await showAlert('Công việc không hợp lệ', 'Lỗi');
       return;
     }
 
     try {
-      const url = `/api/tasks/${encodeURIComponent(task.id)}`;
+      const url = `/api/tasks/${encodeURIComponent(taskId)}`;
       
       // Sử dụng PATCH để chỉ update status
       const res = await fetchJson<{ ok: true; data: Task }>(url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: TaskStatus.DONE })
+        body: JSON.stringify({ status: newStatus })
       });
       
       // Cập nhật task trong state
-      setTasks(prev => prev.map(t => (t.id === task.id ? res.data : t)));
+      setTasks(prev => prev.map(t => (t.id === taskId ? res.data : t)));
       
       // Cập nhật selectedTask nếu đang xem task này
-      if (selectedTask && selectedTask.id === task.id) {
-        setSelectedTask(res.data);
-      }
+      setSelectedTask(prev => prev && prev.id === taskId ? res.data : prev);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Không cập nhật được công việc';
-      alert(`Lỗi: ${message}\n\nVui lòng thử lại hoặc reload trang.`);
+      await showAlert(`Lỗi: ${message}\n\nVui lòng thử lại hoặc reload trang.`, 'Lỗi');
+    }
+  }, [showAlert]);
+
+  const handleUpdateTask = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSubmitting || !selectedTask) return;
+    setIsSubmitting(true);
+    const f = new FormData(e.currentTarget);
+    try {
+      const payload = {
+        title: f.get('title'),
+        description: f.get('description'),
+        assigneeId: f.get('assigneeId'),
+        deadline: f.get('deadline') || undefined,
+        priority: f.get('priority') as TaskPriority,
+        imageUrls: previewImages.length > 0 ? previewImages : selectedTask.imageUrls
+      };
+      const res = await fetchJson<{ ok: true; data: Task }>(`/api/tasks/${selectedTask.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      setTasks(prev => prev.map(t => (t.id === selectedTask.id ? res.data : t)));
+      setSelectedTask(res.data);
+      setIsEditTaskModalOpen(false);
+      setPreviewImages([]);
+    } catch (error) {
+      await showAlert(error instanceof Error ? error.message : 'Không cập nhật được công việc', 'Lỗi');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -382,7 +494,7 @@ const AppShell: React.FC = () => {
       setSelectedTask(res.data);
       setNewNoteContent('');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không thể thêm ghi chú');
+      await showAlert(error instanceof Error ? error.message : 'Không thể thêm ghi chú', 'Lỗi');
     } finally {
       setIsAddingNote(false);
     }
@@ -391,6 +503,221 @@ const AppShell: React.FC = () => {
   const filteredTasks = useMemo(() => {
     return selectedProjectId ? tasks.filter(t => t.projectId === selectedProjectId) : tasks;
   }, [tasks, selectedProjectId]);
+
+  // Callbacks cho Sidebar
+  const handleLogoClick = useCallback(() => {
+    setActiveTab('dashboard');
+    setSelectedProjectId(null);
+  }, []);
+
+  const handleTabChange = useCallback(async (tab: 'dashboard' | 'projects' | 'tasks' | 'team') => {
+    // Kiểm tra xem có modal nào đang mở không
+    const hasOpenModal = isTaskModalOpen || isEditTaskModalOpen || isProjectModalOpen || isEditProjectModalOpen || isUserModalOpen || selectedUser !== null || selectedTask !== null;
+    
+    if (hasOpenModal) {
+      // Xác định loại modal và thông báo phù hợp
+      let warningMessage = '';
+      if (isTaskModalOpen) {
+        warningMessage = 'Công việc chưa được tạo. Bạn có chắc chắn muốn thoát không?';
+      } else if (isEditTaskModalOpen) {
+        warningMessage = 'Thay đổi công việc chưa được lưu. Bạn có chắc chắn muốn thoát không?';
+      } else if (isProjectModalOpen) {
+        warningMessage = 'Dự án chưa được tạo. Bạn có chắc chắn muốn thoát không?';
+      } else if (isEditProjectModalOpen) {
+        warningMessage = 'Thay đổi dự án chưa được lưu. Bạn có chắc chắn muốn thoát không?';
+      } else if (isUserModalOpen) {
+        warningMessage = 'Nhân sự chưa được tạo. Bạn có chắc chắn muốn thoát không?';
+      } else if (selectedUser) {
+        warningMessage = 'Thay đổi nhân sự chưa được lưu. Bạn có chắc chắn muốn thoát không?';
+      } else if (selectedTask) {
+        warningMessage = 'Bạn đang xem chi tiết công việc. Bạn có chắc chắn muốn thoát không?';
+      }
+      
+      if (warningMessage) {
+        const confirmed = await showConfirmDialog({
+          message: warningMessage,
+          confirmText: 'Có, thoát',
+          cancelText: 'Không, ở lại',
+          confirmVariant: 'primary'
+        });
+        if (!confirmed) {
+          // Người dùng chọn "Không" - không chuyển tab
+          return;
+        }
+      }
+      
+      // Người dùng chọn "Có" - đóng tất cả modal và chuyển tab
+      setIsTaskModalOpen(false);
+      setIsEditTaskModalOpen(false);
+      setIsProjectModalOpen(false);
+      setIsEditProjectModalOpen(false);
+      setIsUserModalOpen(false);
+      setSelectedUser(null);
+      setSelectedTask(null);
+      setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', startDate: new Date().toISOString().split('T')[0], deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
+      setPreviewImages([]);
+      setNewProjectMembers([]);
+      setEditUserRole(UserRole.EMPLOYEE);
+      setEditUserAvatar('');
+      setSelectedAvatar('');
+    }
+    
+    // Chuyển tab và clear selected project
+    setActiveTab(tab);
+    setSelectedProjectId(null);
+  }, [
+    isTaskModalOpen,
+    isEditTaskModalOpen,
+    isProjectModalOpen,
+    isEditProjectModalOpen,
+    isUserModalOpen,
+    selectedUser,
+    selectedTask,
+    showConfirmDialog
+  ]);
+
+  const handleProjectSelect = useCallback((id: string | null) => { 
+    setSelectedProjectId(id); 
+    // Không tự động chuyển tab, Kanban board sẽ hiển thị overlay
+  }, []);
+
+  // Callbacks cho Header
+  const handleHeaderBack = useCallback(() => setSelectedProjectId(null), []);
+  const handleHeaderCreateProject = useCallback(() => setIsProjectModalOpen(true), []);
+  const handleHeaderCreateUser = useCallback(() => setIsUserModalOpen(true), []);
+  const handleHeaderCreateTask = useCallback(() => {
+    // Tự động set projectId nếu đang ở trong một dự án
+    if (selectedProjectId) {
+      setNewTaskForm(prev => ({ ...prev, projectId: selectedProjectId }));
+    }
+    setIsTaskModalOpen(true);
+  }, [selectedProjectId]);
+
+  // Callbacks cho MobileNav
+  const handleMobileTabChange = useCallback((tab: 'dashboard' | 'projects' | 'tasks' | 'team') => { 
+    setActiveTab(tab); 
+    setSelectedProjectId(null); 
+  }, []);
+  const handleClearSelection = useCallback(() => setSelectedProjectId(null), []);
+
+  // Helper functions để kiểm tra và đóng modal với cảnh báo
+  const checkAndCloseTaskModal = useCallback(async () => {
+    const hasChanges = newTaskForm.title.trim() || newTaskForm.description.trim() || newTaskForm.assigneeId || newTaskForm.deadline || previewImages.length > 0;
+    if (hasChanges) {
+      const confirmed = await showConfirmDialog({
+        message: 'Công việc chưa được tạo. Bạn có chắc chắn muốn thoát không?',
+        confirmText: 'Có, thoát',
+        cancelText: 'Không, ở lại',
+        confirmVariant: 'primary'
+      });
+      if (!confirmed) return;
+    }
+    setIsTaskModalOpen(false);
+    setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', startDate: new Date().toISOString().split('T')[0], deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
+    setPreviewImages([]);
+  }, [newTaskForm, previewImages, showConfirmDialog]);
+
+  const checkAndCloseEditTaskModal = useCallback(async () => {
+    if (!selectedTask) return;
+    // Kiểm tra xem có thay đổi không (so sánh với selectedTask ban đầu)
+    // Vì form sửa dùng defaultValue, nên chỉ cần kiểm tra previewImages
+    const hasChanges = previewImages.length > 0;
+    if (hasChanges) {
+      const confirmed = await showConfirmDialog({
+        message: 'Thay đổi công việc chưa được lưu. Bạn có chắc chắn muốn thoát không?',
+        confirmText: 'Có, thoát',
+        cancelText: 'Không, ở lại',
+        confirmVariant: 'primary'
+      });
+      if (!confirmed) return;
+    }
+    setIsEditTaskModalOpen(false);
+    setPreviewImages([]);
+    setEditTaskAssigneeId('');
+  }, [selectedTask, previewImages, showConfirmDialog]);
+
+  const checkAndCloseProjectModal = useCallback(async () => {
+    // Kiểm tra form có dữ liệu không (cần đọc từ form, nhưng vì dùng FormData nên khó kiểm tra)
+    // Tạm thời luôn hiển thị cảnh báo nếu modal đang mở
+    const confirmed = await showConfirmDialog({
+      message: 'Dự án chưa được tạo. Bạn có chắc chắn muốn thoát không?',
+      confirmText: 'Có, thoát',
+      cancelText: 'Không, ở lại',
+      confirmVariant: 'primary'
+    });
+    if (!confirmed) return;
+    setIsProjectModalOpen(false);
+  }, [showConfirmDialog]);
+
+  const checkAndCloseEditProjectModal = useCallback(async () => {
+    // Kiểm tra xem có thay đổi không (so sánh với selectedProject ban đầu)
+    // Vì form sửa dùng defaultValue, nên chỉ cần kiểm tra newProjectMembers
+    const hasChanges = selectedProject && (
+      newProjectMembers.length !== selectedProject.memberIds.length ||
+      newProjectMembers.some(id => !selectedProject.memberIds.includes(id))
+    );
+    if (hasChanges) {
+      const confirmed = await showConfirmDialog({
+        message: 'Thay đổi dự án chưa được lưu. Bạn có chắc chắn muốn thoát không?',
+        confirmText: 'Có, thoát',
+        cancelText: 'Không, ở lại',
+        confirmVariant: 'primary'
+      });
+      if (!confirmed) return;
+    }
+    setIsEditProjectModalOpen(false);
+    setSelectedProject(null);
+    setNewProjectMembers([]);
+  }, [selectedProject, newProjectMembers, showConfirmDialog]);
+
+  const checkAndCloseUserModal = useCallback(async () => {
+    // Kiểm tra form có dữ liệu không
+    // Tạm thời luôn hiển thị cảnh báo nếu modal đang mở
+    const confirmed = await showConfirmDialog({
+      message: 'Nhân sự chưa được tạo. Bạn có chắc chắn muốn thoát không?',
+      confirmText: 'Có, thoát',
+      cancelText: 'Không, ở lại',
+      confirmVariant: 'primary'
+    });
+    if (!confirmed) return;
+    setIsUserModalOpen(false);
+    setNewUserRole(UserRole.EMPLOYEE);
+    setSelectedAvatar('');
+  }, [showConfirmDialog]);
+
+  const checkAndCloseEditUserModal = useCallback(async () => {
+    if (!selectedUser) return;
+    // Kiểm tra xem có thay đổi không
+    // Vì form sửa dùng defaultValue, nên khó kiểm tra chính xác
+    // Tạm thời luôn hiển thị cảnh báo
+    const confirmed = await showConfirmDialog({
+      message: 'Thay đổi nhân sự chưa được lưu. Bạn có chắc chắn muốn thoát không?',
+      confirmText: 'Có, thoát',
+      cancelText: 'Không, ở lại',
+      confirmVariant: 'primary'
+    });
+    if (!confirmed) return;
+    setSelectedUser(null);
+    setEditUserRole(UserRole.EMPLOYEE);
+    setEditUserAvatar('');
+    setCurrentUserPassword('');
+  }, [selectedUser, showConfirmDialog]);
+
+  const checkAndCloseViewTaskModal = useCallback(async () => {
+    // Kiểm tra xem có thay đổi không (ghi chú hoặc status)
+    const hasChanges = newNoteContent.trim().length > 0;
+    if (hasChanges) {
+      const confirmed = await showConfirmDialog({
+        message: 'Bạn đang thực hiện dở tác vụ (ghi chú chưa được lưu). Bạn có chắc chắn muốn thoát không?',
+        confirmText: 'Có, thoát',
+        cancelText: 'Không, ở lại',
+        confirmVariant: 'primary'
+      });
+      if (!confirmed) return;
+    }
+    setSelectedTask(null);
+    setNewNoteContent('');
+  }, [newNoteContent, showConfirmDialog]);
 
   // StatusBadge đã được tách thành component riêng trong ui/features/tasks/StatusBadge.tsx
 
@@ -414,14 +741,9 @@ const AppShell: React.FC = () => {
         activeTab={activeTab}
         selectedProjectId={selectedProjectId}
         projects={projects}
-        onTabChange={(tab) => { 
-          setActiveTab(tab); 
-          setSelectedProjectId(null); 
-        }}
-        onProjectSelect={(id) => { 
-          setSelectedProjectId(id); 
-          setActiveTab('tasks'); 
-        }}
+          onLogoClick={handleLogoClick}
+          onTabChange={handleTabChange}
+          onProjectSelect={handleProjectSelect}
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -431,13 +753,30 @@ const AppShell: React.FC = () => {
           selectedProjectId={selectedProjectId}
           projects={projects}
           currentUserRole={currentUser?.role}
-          onBack={() => setSelectedProjectId(null)}
-          onCreateProject={() => setIsProjectModalOpen(true)}
-          onCreateUser={() => setIsUserModalOpen(true)}
-          onCreateTask={() => setIsTaskModalOpen(true)}
+          onBack={handleHeaderBack}
+          onCreateProject={handleHeaderCreateProject}
+          onCreateUser={handleHeaderCreateUser}
+          onCreateTask={handleHeaderCreateTask}
         />
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-10 pb-24 md:pb-10">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-10 pb-24 md:pb-10 relative">
+          {/* Kanban Board View - Hiển thị khi có selectedProjectId, bất kể activeTab */}
+          {selectedProjectId ? (
+            <TasksView
+              tasks={filteredTasks}
+              users={users}
+              onTaskClick={setSelectedTask}
+              onTaskUpdate={(updatedTask) => {
+                // Update task in state
+                setTasks(prev => prev.map(t => (t.id === updatedTask.id ? updatedTask : t)));
+                // Update selectedTask if it's the one being updated
+                if (selectedTask && selectedTask.id === updatedTask.id) {
+                  setSelectedTask(updatedTask);
+                }
+              }}
+            />
+          ) : (
+            <>
           {/* Dashboard View */}
           {activeTab === 'dashboard' && (
             <DashboardView
@@ -455,7 +794,7 @@ const AppShell: React.FC = () => {
               users={users}
               onProjectClick={(id) => {
                 setSelectedProjectId(id);
-                setActiveTab('tasks');
+                    // Kanban board sẽ hiển thị overlay
               }}
               onEditProject={(project) => {
                 setSelectedProject(project);
@@ -464,24 +803,20 @@ const AppShell: React.FC = () => {
               }}
               onViewProject={(project) => {
                 setSelectedProjectId(project.id);
-                setActiveTab('tasks');
+                    // Kanban board sẽ hiển thị overlay
               }}
             />
           )}
 
-          {/* Tasks View */}
+              {/* Tasks View - Chỉ hiển thị AllTasksView */}
           {activeTab === 'tasks' && (
-            <TasksView
-              tasks={filteredTasks}
+                <AllTasksView
+                  tasks={tasks}
+                  projects={projects}
               users={users}
-              onTaskClick={setSelectedTask}
-              onTaskUpdate={(updatedTask) => {
-                // Update task in state
-                setTasks(prev => prev.map(t => (t.id === updatedTask.id ? updatedTask : t)));
-                // Update selectedTask if it's the one being updated
-                if (selectedTask && selectedTask.id === updatedTask.id) {
-                  setSelectedTask(updatedTask);
-                }
+                  onTaskClick={(task, projectId) => {
+                    // Chỉ chọn project, Kanban board sẽ hiển thị overlay
+                    setSelectedProjectId(projectId);
               }}
             />
           )}
@@ -500,18 +835,31 @@ const AppShell: React.FC = () => {
                     setSelectedUser(null);
                   }
                 } catch (error) {
-                  alert(error instanceof Error ? error.message : 'Không xóa được người dùng');
+                      await showAlert(error instanceof Error ? error.message : 'Không xóa được người dùng', 'Lỗi');
                 }
               }}
-              onUserClick={(user) => {
+                  onUserClick={async (user) => {
                 // Chỉ Admin và Manager mới có thể sửa user
                 if (currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.MANAGER) {
                   setSelectedUser(user);
                   setEditUserRole(user.role);
                   setEditUserAvatar(user.avatar);
+                      // Fetch user với password để hiển thị
+                      try {
+                        const res = await fetchJson<{ ok: true; data: User }>(`/api/users/${user.id}?includePassword=true`);
+                        if (res.data.password) {
+                          setCurrentUserPassword(res.data.password);
+                        } else {
+                          setCurrentUserPassword('');
+                        }
+                      } catch (error) {
+                        setCurrentUserPassword('');
+                      }
                 }
               }}
             />
+              )}
+            </>
           )}
         </div>
       </main>
@@ -519,20 +867,20 @@ const AppShell: React.FC = () => {
       {/* Mobile Navigation - sử dụng MobileNav component */}
       <MobileNav
         activeTab={activeTab}
-        onTabChange={(tab) => { setActiveTab(tab); setSelectedProjectId(null); }}
-        onClearSelection={() => setSelectedProjectId(null)}
+        onTabChange={handleMobileTabChange}
+        onClearSelection={handleClearSelection}
       />
 
       {isUserModalOpen && (
-        <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
-              <button onClick={() => { setIsUserModalOpen(false); setNewUserRole(UserRole.EMPLOYEE); setSelectedAvatar(''); }} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseUserModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
               <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Thêm nhân sự</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
-              <button onClick={() => { setIsUserModalOpen(false); setNewUserRole(UserRole.EMPLOYEE); setSelectedAvatar(''); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseUserModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
@@ -595,15 +943,15 @@ const AppShell: React.FC = () => {
       )}
 
       {selectedUser && (
-        <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
-              <button onClick={() => { setSelectedUser(null); setEditUserRole(UserRole.EMPLOYEE); setEditUserAvatar(''); }} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseEditUserModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
               <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Chỉnh sửa nhân sự</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
-              <button onClick={() => { setSelectedUser(null); setEditUserRole(UserRole.EMPLOYEE); setEditUserAvatar(''); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseEditUserModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
@@ -620,6 +968,20 @@ const AppShell: React.FC = () => {
                         <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
                         <input required name="email" type="email" defaultValue={selectedUser.email} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-slate-600" placeholder="email@company.com" />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mật khẩu hiện tại</label>
+                        <input 
+                          type="text" 
+                          readOnly 
+                          value={currentUserPassword || 'Chưa có mật khẩu'} 
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-slate-600 cursor-not-allowed" 
+                        />
+                      </div>
+                      <PasswordInput
+                        name="password"
+                        placeholder="Nhập mật khẩu mới để thay đổi"
+                        label="Mật khẩu mới (tùy chọn)"
+                      />
                     </div>
                   </div>
                 </div>
@@ -660,15 +1022,15 @@ const AppShell: React.FC = () => {
       )}
 
       {isProjectModalOpen && (
-        <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
-              <button onClick={() => setIsProjectModalOpen(false)} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseProjectModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
               <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Khởi tạo dự án mới</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
-              <button onClick={() => setIsProjectModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseProjectModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
@@ -722,15 +1084,15 @@ const AppShell: React.FC = () => {
       )}
 
       {isEditProjectModalOpen && selectedProject && (
-        <div className="fixed inset-0 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
-              <button onClick={() => { setIsEditProjectModalOpen(false); setSelectedProject(null); setNewProjectMembers([]); }} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseEditProjectModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
               <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Chỉnh sửa dự án</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
-              <button onClick={() => { setIsEditProjectModalOpen(false); setSelectedProject(null); setNewProjectMembers([]); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseEditProjectModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
@@ -784,15 +1146,15 @@ const AppShell: React.FC = () => {
       )}
 
       {isTaskModalOpen && (
-        <div className="fixed inset-0 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
-              <button onClick={() => { setIsTaskModalOpen(false); setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', deadline: '', priority: TaskPriority.MEDIUM, isBug: false }); setPreviewImages([]); }} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
               <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Giao việc mới</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
-              <button onClick={() => { setIsTaskModalOpen(false); setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', deadline: '', priority: TaskPriority.MEDIUM, isBug: false }); setPreviewImages([]); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseTaskModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
             </div>
           </div>
 
@@ -813,6 +1175,30 @@ const AppShell: React.FC = () => {
                         <option value={TaskPriority.HIGH}>Cao</option>
                       </select>
                     </div>
+                    {selectedProjectId ? (
+                      // Hiển thị tên dự án đang chọn nếu có selectedProjectId
+                      <div className="space-y-2">
+                        <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dự án</label>
+                        <div className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50">
+                          <div
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                projects.find(p => p.id === selectedProjectId)?.color &&
+                                projects.find(p => p.id === selectedProjectId)?.color !== '#0F172A' &&
+                                projects.find(p => p.id === selectedProjectId)?.color !== 'rgb(15, 23, 42)'
+                                  ? projects.find(p => p.id === selectedProjectId)?.color
+                                  : '#8907E6'
+                            }}
+                          />
+                          <span className="text-slate-900 font-medium">
+                            {projects.find(p => p.id === selectedProjectId)?.name || 'Dự án không xác định'}
+                          </span>
+                        </div>
+                        <input type="hidden" name="projectId" value={selectedProjectId} />
+                      </div>
+                    ) : (
+                      // Hiển thị select dự án nếu không có selectedProjectId
                     <SearchableSelect
                       label="Dự án"
                       name="projectId"
@@ -825,6 +1211,7 @@ const AppShell: React.FC = () => {
                       onChange={(value) => setNewTaskForm(prev => ({ ...prev, projectId: value }))}
                       placeholder="Tìm kiếm dự án..."
                     />
+                    )}
                     <input 
                       required 
                       name="title" 
@@ -886,7 +1273,9 @@ const AppShell: React.FC = () => {
                             { value: '', label: '-- Chọn --' },
                             ...(() => {
                               // Lọc users theo project members
-                              const selectedProject = projects.find(p => p.id === newTaskForm.projectId);
+                              // Ưu tiên selectedProjectId, nếu không có thì dùng projectId từ form
+                              const projectIdToUse = selectedProjectId || newTaskForm.projectId;
+                              const selectedProject = projects.find(p => p.id === projectIdToUse);
                               if (!selectedProject) return users.map(u => ({ value: u.id, label: u.name }));
                               return users
                                 .filter(u => selectedProject.memberIds.includes(u.id))
@@ -924,10 +1313,22 @@ const AppShell: React.FC = () => {
                     )}
 
                     <div className="grid grid-cols-1 gap-4 md:gap-6 pt-6 border-t border-slate-200/60">
-                      {/* Employee không thể thay đổi deadline */}
+                      {/* Employee không thể thay đổi ngày bắt đầu và deadline */}
                       {currentUser?.role !== UserRole.EMPLOYEE && (
+                        <>
                         <div>
-                          <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Thời hạn (tùy chọn)</p>
+                            <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Ngày bắt đầu <span className="text-red-500">*</span></p>
+                            <input 
+                              required
+                              name="startDate" 
+                              type="date" 
+                              className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-slate-900 text-base md:text-lg" 
+                              value={newTaskForm.startDate}
+                              onChange={(e) => setNewTaskForm(prev => ({ ...prev, startDate: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Ngày kết thúc (tùy chọn)</p>
                           <input 
                             name="deadline" 
                             type="date" 
@@ -936,6 +1337,7 @@ const AppShell: React.FC = () => {
                             onChange={(e) => setNewTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
                           />
                         </div>
+                        </>
                       )}
                     </div>
 
@@ -957,10 +1359,10 @@ const AppShell: React.FC = () => {
       )}
 
       {selectedTask && (
-        <div className="fixed inset-0 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
-              <button onClick={() => setSelectedTask(null)} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseViewTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
               <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
               <div className="flex items-center gap-2 truncate">
                 <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: projects.find(p => p.id === selectedTask.projectId)?.color }}></div>
@@ -969,12 +1371,35 @@ const AppShell: React.FC = () => {
             </div>
             <div className="flex items-center gap-1 md:gap-4">
               <button
-                onClick={() => { if (confirm('Xóa công việc này?')) { handleDeleteTask(selectedTask.id); } }}
+                onClick={() => {
+                  setIsEditTaskModalOpen(true);
+                  setPreviewImages(selectedTask.imageUrls || []);
+                  setEditTaskAssigneeId(selectedTask.assigneeId);
+                }}
+                className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"
+                title="Chỉnh sửa công việc"
+              >
+                <PencilIcon className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+              <button
+                onClick={async () => {
+                  const confirmed = await showConfirmDialog({
+                    title: 'Xóa công việc',
+                    message: 'Bạn có chắc chắn muốn xóa công việc này?',
+                    confirmText: 'Xóa',
+                    cancelText: 'Hủy',
+                    confirmVariant: 'danger'
+                  });
+                  if (confirmed) {
+                    handleDeleteTask(selectedTask.id);
+                  }
+                }}
                 className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all"
+                title="Xóa công việc"
               >
                 <TrashIcon className="w-5 h-5 md:w-6 md:h-6" />
               </button>
-              <button onClick={() => setSelectedTask(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={checkAndCloseViewTaskModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
             </div>
           </div>
 
@@ -1093,29 +1518,212 @@ const AppShell: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="pt-4 md:pt-8">
-                      {selectedTask.assigneeId === currentUser?.id && selectedTask.status !== TaskStatus.DONE ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (selectedTask) {
-                              handleMarkDone(selectedTask);
-                            }
-                          }}
-                          className="w-full py-3 md:py-4 bg-emerald-600 text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest"
+                    <div className="pt-4 md:pt-8 space-y-3">
+                      <div>
+                        <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Trạng thái công việc</label>
+                        <select
+                          value={selectedTask.status}
+                          onChange={(e) => handleUpdateTaskStatus(selectedTask.id, e.target.value as TaskStatus)}
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-slate-900 font-medium"
                         >
-                          <CheckIcon className="w-5 h-5 md:w-6 md:h-6" /> Hoàn thành
-                        </button>
-                      ) : (
-                        <div className="p-3 md:p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center gap-3 text-emerald-700">
-                          <CheckIcon className="w-5 h-5" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Nhiệm vụ hoàn tất</span>
-                        </div>
-                      )}
+                          <option value={TaskStatus.NEW}>Mới</option>
+                          <option value={TaskStatus.BUG}>Lỗi</option>
+                          <option value={TaskStatus.IN_PROGRESS}>Đang thực hiện</option>
+                          <option value={TaskStatus.FIXED}>Đã sửa</option>
+                          <option value={TaskStatus.DONE}>Hoàn thành</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isEditTaskModalOpen && selectedTask && (
+        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+          <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={checkAndCloseEditTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Chỉnh sửa công việc</h2>
+            </div>
+            <div className="flex items-center gap-1 md:gap-4">
+              <button onClick={checkAndCloseEditTaskModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-all"><XMarkIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+            <div className="max-w-5xl mx-auto w-full px-4 md:px-8 py-8 md:py-16">
+              <form onSubmit={handleUpdateTask} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
+                <div className="lg:col-span-2 space-y-8 md:space-y-12">
+                  <div className="space-y-4 md:space-y-6">
+                    <div className="flex gap-3 items-center flex-wrap">
+                      <select 
+                        name="priority" 
+                        className="px-3 py-1.5 border border-slate-200 rounded text-xs bg-white"
+                        defaultValue={selectedTask.priority}
+                      >
+                        <option value={TaskPriority.LOW}>Thấp</option>
+                        <option value={TaskPriority.MEDIUM}>Trung bình</option>
+                        <option value={TaskPriority.HIGH}>Cao</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dự án</label>
+                      <div className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50">
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{
+                            backgroundColor:
+                              projects.find(p => p.id === selectedTask.projectId)?.color &&
+                              projects.find(p => p.id === selectedTask.projectId)?.color !== '#0F172A' &&
+                              projects.find(p => p.id === selectedTask.projectId)?.color !== 'rgb(15, 23, 42)'
+                                ? projects.find(p => p.id === selectedTask.projectId)?.color
+                                : '#8907E6'
+                          }}
+                        />
+                        <span className="text-slate-900 font-medium">
+                          {projects.find(p => p.id === selectedTask.projectId)?.name || 'Dự án không xác định'}
+                        </span>
+                      </div>
+                    </div>
+                    <input 
+                      required 
+                      name="title" 
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" 
+                      placeholder="Tiêu đề công việc..." 
+                      defaultValue={selectedTask.title}
+                    />
+                  </div>
+
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Nội dung yêu cầu</h4>
+                    <textarea 
+                      name="description" 
+                      rows={8} 
+                      className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" 
+                      placeholder="Chi tiết quy trình... (Có thể dán link: https://example.com)" 
+                      defaultValue={selectedTask.description || ''}
+                    />
+                  </div>
+
+                  <div className="space-y-4 md:space-y-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#FF33E7] pl-4 md:pl-5">Hình ảnh đính kèm ({previewImages.length})</h4>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pl-4 md:pl-6">
+                      {previewImages.map((img, i) => (
+                        <div
+                          key={i}
+                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-pointer hover:border-[#FF33E7] transition-all"
+                        >
+                          <img src={img} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                            onClick={() => setPreviewImages(prev => prev.filter((_, idx) => idx !== i))} 
+                            className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                          >
+                            <XMarkIcon className="w-5 h-5" />
+                        </button>
+                        </div>
+                      ))}
+                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-[#FF33E7] hover:border-[#FF33E7] cursor-pointer transition-colors">
+                        <PlusIcon className="w-5 h-5 md:w-6 md:h-6" />
+                        <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+                  <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-100 space-y-6 md:space-y-8">
+                    {/* Chỉ hiển thị assignee selector nếu không phải Employee */}
+                    {currentUser?.role !== UserRole.EMPLOYEE && (
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Người thực hiện</p>
+                        <SearchableSelect
+                          name="assigneeId"
+                          required
+                          options={[
+                            { value: '', label: '-- Chọn --' },
+                            ...(() => {
+                              const selectedProject = projects.find(p => p.id === selectedTask.projectId);
+                              if (!selectedProject) return users.map(u => ({ value: u.id, label: u.name }));
+                              return users
+                                .filter(u => selectedProject.memberIds.includes(u.id))
+                                .map(u => ({ value: u.id, label: u.name }));
+                            })()
+                          ]}
+                          value={editTaskAssigneeId}
+                          onChange={(value) => setEditTaskAssigneeId(value)}
+                          placeholder="Tìm kiếm người dùng..."
+                        />
+                        {selectedTask.assigneeId && (
+                          <div className="flex items-center gap-3 md:gap-4 mt-4">
+                            <img src={users.find(u => u.id === selectedTask.assigneeId)?.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-white shadow-sm" />
+                            <div>
+                              <p className="font-bold text-slate-900 text-sm md:text-base">{users.find(u => u.id === selectedTask.assigneeId)?.name}</p>
+                              <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">{users.find(u => u.id === selectedTask.assigneeId)?.role}</p>
+                            </div>
+                        </div>
+                      )}
+                    </div>
+                    )}
+
+                    {/* Employee thấy thông tin tự assign */}
+                    {currentUser?.role === UserRole.EMPLOYEE && (
+                      <div>
+                        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Người thực hiện</p>
+                        <div className="flex items-center gap-3 md:gap-4">
+                          <img src={currentUser.avatar} className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-white shadow-sm" />
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm md:text-base">{currentUser.name}</p>
+                            <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">{currentUser.role}</p>
+                  </div>
+                </div>
+              </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-4 md:gap-6 pt-6 border-t border-slate-200/60">
+                      {/* Employee không thể thay đổi ngày bắt đầu và deadline */}
+                      {currentUser?.role !== UserRole.EMPLOYEE && (
+                        <>
+                          <div>
+                            <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Ngày bắt đầu <span className="text-red-500">*</span></p>
+                            <input 
+                              required
+                              name="startDate" 
+                              type="date" 
+                              className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-slate-900 text-base md:text-lg" 
+                              defaultValue={selectedTask.startDate ? new Date(selectedTask.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                            />
+                          </div>
+                          <div>
+                            <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Ngày kết thúc (tùy chọn)</p>
+                            <input 
+                              name="deadline" 
+                              type="date" 
+                              className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-red-600 text-base md:text-lg" 
+                              defaultValue={selectedTask.deadline ? new Date(selectedTask.deadline).toISOString().split('T')[0] : ''}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="pt-4 md:pt-8">
+                      <button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60"
+                      >
+                        {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật công việc'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -1157,6 +1765,21 @@ const AppShell: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal && (
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          type={confirmModal.type}
+          confirmText={confirmModal.confirmText}
+          cancelText={confirmModal.cancelText}
+          confirmVariant={confirmModal.confirmVariant}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={confirmModal.onCancel}
+        />
       )}
     </div>
   );

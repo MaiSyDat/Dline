@@ -189,7 +189,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
 /**
  * TasksView component với Kanban board và drag-and-drop
  */
-export const TasksView: React.FC<TasksViewProps> = ({
+export const TasksView: React.FC<TasksViewProps> = React.memo(({
   tasks,
   users,
   onTaskClick,
@@ -393,4 +393,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
       </DndContext>
     </div>
   );
-};
+});
+
+TasksView.displayName = 'TasksView';

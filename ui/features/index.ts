@@ -12,6 +12,8 @@ export { StatusBadge } from './tasks/StatusBadge';
 export type { StatusBadgeProps } from './tasks/StatusBadge';
 export { TasksView } from './tasks/TasksView';
 export type { TasksViewProps } from './tasks/TasksView';
+export { AllTasksView } from './tasks/AllTasksView';
+export type { AllTasksViewProps } from './tasks/AllTasksView';
 
 // Dashboard
 export { DashboardView } from './dashboard/DashboardView';

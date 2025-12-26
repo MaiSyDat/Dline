@@ -63,11 +63,11 @@ export const LoginForm: React.FC = () => {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
       <div className="bg-white w-full max-w-sm p-10 rounded-lg shadow-2xl modal-enter">
         {/* Logo */}
-        <div className="text-center mb-10">
+        <div className="text-center">
           <img 
             src="/img/logo/logo.png" 
             alt="D-Line Workflows" 
-            className="w-32 h-32 mx-auto object-contain"
+            className="w-40 mx-auto object-contain"
           />
         </div>
 

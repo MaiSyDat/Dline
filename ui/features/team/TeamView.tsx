@@ -27,7 +27,7 @@ export interface TeamViewProps {
 /**
  * TeamView component với user cards
  */
-export const TeamView: React.FC<TeamViewProps> = ({
+export const TeamView: React.FC<TeamViewProps> = React.memo(({
   users,
   tasks,
   currentUserRole,
@@ -95,5 +95,7 @@ export const TeamView: React.FC<TeamViewProps> = ({
       })}
     </div>
   );
-};
+});
+
+TeamView.displayName = 'TeamView';
 

@@ -3,13 +3,13 @@
  * 
  * Protect routes - redirect to login nếu chưa authenticated
  * Chạy trên Edge Runtime - không import MongoDB
+ * 
+ * Uses auth proxy pattern for NextAuth v5 compatibility
  */
 
-import NextAuth from 'next-auth';
-import { authConfig } from './auth.config';
+import { auth } from './auth.proxy';
 import { NextResponse } from 'next/server';
-
-const { auth } = NextAuth(authConfig);
+import { addSecurityHeaders } from './middleware.security';
 
 export default auth((req) => {
   const isAuthenticated = !!req.auth;
@@ -17,28 +17,27 @@ export default auth((req) => {
   const isAuthRoute = req.nextUrl.pathname.startsWith('/api/auth');
   const isOnLoginPage = req.nextUrl.pathname === '/';
 
+  let response: NextResponse;
+
   // Cho phép API routes và auth routes
   if (isApiRoute && !isAuthRoute) {
-    return NextResponse.next();
+    response = NextResponse.next();
   }
-
   // Cho phép auth routes
-  if (isAuthRoute) {
-    return NextResponse.next();
+  else if (isAuthRoute) {
+    response = NextResponse.next();
   }
-
   // Nếu chưa authenticated và không phải API route, redirect về login
-  if (!isAuthenticated && !isApiRoute) {
-    return NextResponse.redirect(new URL('/', req.url));
+  else if (!isAuthenticated && !isApiRoute) {
+    response = NextResponse.redirect(new URL('/', req.url));
   }
-
   // Nếu đã authenticated và đang ở login page, có thể redirect về dashboard
-  // (Tùy chọn - có thể bỏ qua để AppShell tự xử lý)
-  if (isAuthenticated && isOnLoginPage) {
-    return NextResponse.next();
+  else {
+    response = NextResponse.next();
   }
 
-  return NextResponse.next();
+  // Thêm security headers cho tất cả responses
+  return addSecurityHeaders(response);
 });
 
 export const config = {

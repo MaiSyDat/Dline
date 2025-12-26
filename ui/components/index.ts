@@ -40,3 +40,6 @@ export type { SearchableSelectProps, SearchableSelectOption } from './Searchable
 export { AvatarSelector } from './AvatarSelector';
 export type { AvatarSelectorProps } from './AvatarSelector';
 
+export { ConfirmModal } from './ConfirmModal';
+export type { ConfirmModalProps } from './ConfirmModal';
+

@@ -11,6 +11,56 @@ export const dynamic = 'force-dynamic';
 type Params = { params: Promise<{ id: string }> };
 
 /**
+ * GET /api/users/[id]
+ * 
+ * Lấy thông tin user theo ID (bao gồm password nếu có quyền)
+ * - Chỉ Admin và Manager có thể lấy thông tin user với password
+ */
+export async function GET(req: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(req.url);
+    const includePassword = searchParams.get('includePassword') === 'true';
+    
+    if (!id) {
+      return NextResponse.json({ ok: false, error: 'Thiếu ID người dùng' }, { status: 400 });
+    }
+
+    // Lấy session để kiểm tra quyền
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ ok: false, error: 'Chưa đăng nhập' }, { status: 401 });
+    }
+
+    const currentUserRole = session.user.role;
+
+    // Chỉ Admin và Manager mới có quyền lấy password
+    if (includePassword && !isAdminOrManager(currentUserRole)) {
+      return NextResponse.json({ ok: false, error: 'Không có quyền xem mật khẩu' }, { status: 403 });
+    }
+
+    const { users } = await getCollections();
+    const user = await users.findOne({ id });
+    
+    if (!user) {
+      return NextResponse.json({ ok: false, error: 'Không tìm thấy người dùng' }, { status: 404 });
+    }
+
+    // Trả về password nếu có quyền và yêu cầu
+    if (includePassword && isAdminOrManager(currentUserRole)) {
+      return NextResponse.json({ ok: true, data: user });
+    }
+
+    // Không trả về password
+    const { password, ...userWithoutPassword } = user;
+    return NextResponse.json({ ok: true, data: userWithoutPassword });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Không thể lấy thông tin người dùng';
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+/**
  * DELETE /api/users/[id]
  * 
  * Xóa user theo ID
@@ -113,9 +163,9 @@ export async function PUT(req: Request, { params }: Params) {
       return NextResponse.json({ ok: false, error: 'Quản lý không thể chỉnh sửa tài khoản quản trị viên' }, { status: 403 });
     }
 
-    // Validate allowed fields (không cho phép thay đổi password qua PUT này)
-    const allowedFields = ['name', 'email', 'role', 'avatar'];
-    const updateData: Partial<User> = {};
+    // Validate allowed fields (bao gồm password)
+    const allowedFields = ['name', 'email', 'role', 'avatar', 'password'];
+    const updateData: Partial<User> & { password?: string } = {};
     
     for (const field of allowedFields) {
       if (field in body) {
@@ -125,6 +175,12 @@ export async function PUT(req: Request, { params }: Params) {
         } else if (field === 'name') {
           // Trim name
           (updateData as any)[field] = (body[field] as string).trim();
+        } else if (field === 'password') {
+          // Trim password nếu có
+          const passwordValue = (body[field] as string)?.trim();
+          if (passwordValue) {
+            updateData.password = passwordValue;
+          }
         } else {
           (updateData as any)[field] = body[field as keyof User];
         }

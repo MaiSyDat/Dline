@@ -55,7 +55,7 @@ const AvatarWithTooltip: React.FC<{ user: User }> = ({ user }) => {
 /**
  * ProjectsView component với project cards
  */
-export const ProjectsView: React.FC<ProjectsViewProps> = ({
+export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
   projects,
   users,
   onProjectClick,
@@ -145,5 +145,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       ))}
     </div>
   );
-};
+});
+
+ProjectsView.displayName = 'ProjectsView';
 

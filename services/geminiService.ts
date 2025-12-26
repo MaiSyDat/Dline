@@ -22,7 +22,6 @@ export async function getGeminiInsights(tasks: Task[], employees: User[]): Promi
   // Validate API key - sử dụng GEMINI_API_KEY
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === 'PLACEHOLDER_API_KEY') {
-    console.warn('GEMINI_API_KEY not set or is placeholder. Skipping Gemini insights.');
     return "AI insights không khả dụng. Vui lòng cấu hình GEMINI_API_KEY trong environment variables.";
   }
 
@@ -44,8 +43,9 @@ export async function getGeminiInsights(tasks: Task[], employees: User[]): Promi
       Keep the response concise and actionable (max 200 words).
     `;
 
+    // Sử dụng ai.models.generateContent với model name đúng
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: 'gemini-2.5-flash', // Sử dụng model mới nhất
       contents: prompt,
       config: {
         temperature: 0.7,
@@ -55,7 +55,9 @@ export async function getGeminiInsights(tasks: Task[], employees: User[]): Promi
 
     return response.text || "Không thể tạo insights tại thời điểm này.";
   } catch (error) {
-    console.error("Gemini Error:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Gemini Error:", error);
+    }
     return "Không thể tạo AI insights tại thời điểm này. Vui lòng thử lại sau.";
   }
 }

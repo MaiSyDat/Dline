@@ -27,7 +27,7 @@ export interface DashboardViewProps {
 /**
  * DashboardView component với stats và recent tasks
  */
-export const DashboardView: React.FC<DashboardViewProps> = ({
+export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   projects,
   tasks,
   users,
@@ -154,5 +154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
     </div>
   );
-};
+});
+
+DashboardView.displayName = 'DashboardView';
 

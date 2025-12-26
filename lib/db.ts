@@ -123,10 +123,6 @@ export async function getCollections() {
     // Reset cache trên lỗi để retry
     cachedCollections = null;
     cachedDb = null;
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.error('getCollections error:', error);
-    }
     throw error;
   }
 }

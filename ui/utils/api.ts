@@ -27,9 +27,6 @@ export const fetchJson = async <T,>(url: string, options?: RequestInit): Promise
       }
       data = JSON.parse(text);
     } catch (parseError) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('JSON parse error:', parseError, 'Response:', res);
-      }
       throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
     
@@ -38,9 +35,6 @@ export const fetchJson = async <T,>(url: string, options?: RequestInit): Promise
       const message = data?.error || data?.message || res.statusText || `HTTP ${res.status}`;
       const error = new Error(message);
       (error as any).status = res.status;
-      if (process.env.NODE_ENV === 'development') {
-        console.error('API error response:', { url, status: res.status, data });
-      }
       throw error;
     }
     
