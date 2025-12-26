@@ -14,6 +14,7 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   closestCorners
@@ -204,10 +205,17 @@ export const TasksView: React.FC<TasksViewProps> = React.memo(({
   }, [tasks]);
 
   // Configure sensors for drag and drop
+  // TouchSensor for mobile devices, PointerSensor for desktop
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8 // Require 8px of movement before activating drag
+      }
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200, // 200ms delay before activating drag on touch
+        tolerance: 5 // Allow 5px of movement during delay
       }
     })
   );
