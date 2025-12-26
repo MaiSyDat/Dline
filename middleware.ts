@@ -27,11 +27,15 @@ export default auth((req) => {
   else if (isAuthRoute) {
     response = NextResponse.next();
   }
+  // Cho phép trang login (không redirect nếu đang ở trang login)
+  else if (isOnLoginPage) {
+    response = NextResponse.next();
+  }
   // Nếu chưa authenticated và không phải API route, redirect về login
   else if (!isAuthenticated && !isApiRoute) {
     response = NextResponse.redirect(new URL('/', req.url));
   }
-  // Nếu đã authenticated và đang ở login page, có thể redirect về dashboard
+  // Nếu đã authenticated, cho phép truy cập
   else {
     response = NextResponse.next();
   }
