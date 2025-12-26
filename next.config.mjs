@@ -7,9 +7,6 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   
-  // Tối ưu bundle size
-  swcMinify: true,
-  
   // Tối ưu images
   images: {
     remotePatterns: [
