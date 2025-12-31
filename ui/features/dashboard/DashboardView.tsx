@@ -6,12 +6,10 @@
 
 'use client';
 
-import React, { useState } from 'react';
-import { BriefcaseIcon, Squares2X2Icon, CheckIcon, BugAntIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import React from 'react';
+import { BriefcaseIcon, Squares2X2Icon, CheckIcon, BugAntIcon } from '@heroicons/react/24/outline';
 import { Project, Task, TaskStatus, User } from '@/types';
 import { StatusBadge } from '../tasks/StatusBadge';
-import { getGeminiInsights } from '@/services/geminiService';
-import { Button } from '../../components/Button';
 import { formatDate } from '../../utils/dateUtils';
 
 export interface DashboardViewProps {
@@ -34,21 +32,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   users,
   onTaskClick
 }) => {
-  const [aiInsights, setAiInsights] = useState<string | null>(null);
-  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-
-  // Load AI insights using Server Action
-  const handleLoadInsights = async () => {
-    setIsLoadingInsights(true);
-    try {
-      const insights = await getGeminiInsights(tasks, users);
-      setAiInsights(insights);
-    } catch (error) {
-      setAiInsights('Không thể tải AI insights. Vui lòng thử lại sau.');
-    } finally {
-      setIsLoadingInsights(false);
-    }
-  };
 
   return (
     <div className="space-y-6 md:space-y-10 modal-enter max-w-7xl mx-auto">
@@ -56,11 +39,11 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {[
           { label: 'Dự án đang chạy', val: projects.length, icon: BriefcaseIcon, color: 'text-slate-900', bg: 'bg-white' },
-          { label: 'Tổng công việc', val: tasks.length, icon: Squares2X2Icon, color: 'text-[#8907E6]', bg: 'bg-white' },
+          { label: 'Tổng công việc', val: tasks.length, icon: Squares2X2Icon, color: 'text-purple', bg: 'bg-white' },
           { label: 'Việc hoàn thành', val: tasks.filter(t => t.status === TaskStatus.DONE).length, icon: CheckIcon, color: 'text-emerald-600', bg: 'bg-white' },
           { label: 'Tổng lỗi (Bugs)', val: tasks.filter(t => t.status === TaskStatus.BUG).length, icon: BugAntIcon, color: 'text-red-500', bg: 'bg-white' }
         ].map((s, i) => (
-          <div key={i} className={`${s.bg} p-3 md:p-6 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center text-center group hover:border-[#8907E6] transition-all`}>
+          <div key={i} className={`${s.bg} p-3 md:p-6 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center text-center group hover:border-purple transition-all`}>
             <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-white border border-slate-200 flex items-center justify-center mb-2 md:mb-4 group-hover:scale-110 transition-transform">
               <s.icon className={`w-4 h-4 md:w-6 md:h-6 ${s.color}`} />
             </div>
@@ -76,7 +59,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           <h3 className="font-black text-slate-900 text-[10px] md:text-sm uppercase tracking-widest">
             Tình trạng công việc gần nhất
           </h3>
-          <button className="text-[9px] md:text-[10px] font-bold text-[#8907E6] hover:underline uppercase">
+          <button className="text-[9px] md:text-[10px] font-bold text-purple hover:underline uppercase">
             Tất cả
           </button>
         </div>
@@ -109,49 +92,6 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             </div>
           ))}
         </div>
-      </div>
-
-      {/* AI Insights Section */}
-      <div className="bg-white p-6 md:p-8 rounded-lg border border-slate-200 shadow-sm">
-        <div className="flex justify-between items-center mb-6 md:mb-8">
-          <div className="flex items-center gap-3">
-            <SparklesIcon className="w-5 h-5 text-[#FF33E7]" />
-            <h3 className="font-black text-slate-900 text-[10px] md:text-sm uppercase tracking-widest">
-              Phân tích AI
-            </h3>
-          </div>
-          {!aiInsights && (
-            <Button
-              onClick={handleLoadInsights}
-              loading={isLoadingInsights}
-              variant="accent"
-              size="sm"
-            >
-              Tạo Insights
-            </Button>
-          )}
-        </div>
-        {aiInsights ? (
-          <div className="prose prose-sm max-w-none">
-            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
-              {aiInsights}
-            </p>
-            <div className="mt-4">
-              <Button
-                onClick={handleLoadInsights}
-                loading={isLoadingInsights}
-                variant="ghost"
-                size="sm"
-              >
-                Tải lại
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-400 italic">
-            Nhấn "Tạo Insights" để nhận phân tích AI về workload và deadlines của team.
-          </p>
-        )}
       </div>
     </div>
   );
