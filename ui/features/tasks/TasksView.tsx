@@ -122,7 +122,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick, isMobile = fa
           {task.priority === TaskPriority.HIGH ? 'Cao' : task.priority === TaskPriority.MEDIUM ? 'Trung bình' : 'Thấp'}
         </div>
       </div>
-      <h4 className="text-xs font-semibold text-slate-700 mb-3 leading-snug line-clamp-2 group-hover:text-[#8907E6] transition-colors">
+      <h4 className="text-xs font-semibold text-slate-700 mb-3 leading-snug line-clamp-2 transition-colors">
         {task.title}
       </h4>
       <div className="flex justify-between items-center mt-auto">

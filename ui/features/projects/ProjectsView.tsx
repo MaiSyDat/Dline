@@ -7,7 +7,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BriefcaseIcon, PencilIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { BriefcaseIcon, PencilIcon, EyeIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Project, User } from '@/types';
 import { Avatar } from '../../components/Avatar';
 
@@ -22,6 +22,8 @@ export interface ProjectsViewProps {
   onEditProject?: (project: Project) => void;
   /** Callback khi click xem project */
   onViewProject?: (project: Project) => void;
+  /** Callback khi click xóa project */
+  onDeleteProject?: (project: Project) => void;
 }
 
 /**
@@ -60,7 +62,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
   users,
   onProjectClick,
   onEditProject,
-  onViewProject
+  onViewProject,
+  onDeleteProject
 }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 modal-enter max-w-7xl mx-auto">
@@ -74,7 +77,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
           <div className="p-4 md:p-5">
             <div className="flex justify-between items-start mb-3">
               <div className="p-1.5 bg-white border border-slate-200 rounded group-hover:bg-[#8907E6]/5 transition-colors">
-                <BriefcaseIcon className="w-4 h-4 text-slate-300 group-hover:text-[#8907E6]" />
+                <BriefcaseIcon className="w-4 h-4 text-slate-300" />
               </div>
               <span className={`px-2 py-0.5 text-[10px] font-black rounded border uppercase tracking-widest ${
                 p.status === 'active' 
@@ -87,7 +90,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
               </span>
             </div>
             <div className="flex justify-between items-start mb-2">
-              <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#8907E6] transition-colors flex-1">
+              <h3 className="text-sm font-bold text-slate-900 transition-colors flex-1">
                 {p.name}
               </h3>
               <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
@@ -107,6 +110,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
                     title="Sửa dự án"
                   >
                     <PencilIcon className="w-4 h-4" />
+                  </button>
+                )}
+                {onDeleteProject && (
+                  <button
+                    onClick={() => onDeleteProject(p)}
+                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                    title="Xóa dự án"
+                  >
+                    <TrashIcon className="w-4 h-4" />
                   </button>
                 )}
               </div>

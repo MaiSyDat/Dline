@@ -2,7 +2,6 @@
   "version": 1,
   "functions": {
     "/api/auth/[...nextauth]": {},
-    "/api/db-check": {},
     "/api/projects": {},
     "/api/projects/[id]": {},
     "/api/tasks": {},

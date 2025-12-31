@@ -2,7 +2,6 @@
   "/_global-error/page": "/_global-error",
   "/_not-found/page": "/_not-found",
   "/api/auth/[...nextauth]/route": "/api/auth/[...nextauth]",
-  "/api/db-check/route": "/api/db-check",
   "/api/projects/[id]/route": "/api/projects/[id]",
   "/api/projects/route": "/api/projects",
   "/api/tasks/[id]/route": "/api/tasks/[id]",

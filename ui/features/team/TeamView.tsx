@@ -76,7 +76,7 @@ export const TeamView: React.FC<TeamViewProps> = React.memo(({
               bordered
               className="mx-auto mb-2 md:mb-4 border-2 md:border-4 border-slate-50 shadow-inner"
             />
-            <h4 className="text-xs md:text-base font-bold text-slate-900 group-hover:text-[#8907E6] mb-1">{u.name}</h4>
+            <h4 className="text-xs md:text-base font-bold text-slate-900 mb-1">{u.name}</h4>
             <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase mb-3 md:mb-6 tracking-widest">
               {u.role === 'admin' ? 'Quản trị viên' : u.role === 'manager' ? 'Quản lý' : u.role === 'employee' ? 'Nhân viên' : u.role}
             </p>

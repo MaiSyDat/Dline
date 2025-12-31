@@ -567,6 +567,38 @@ const AppShell: React.FC = () => {
     }
   }, [showAlert]);
 
+  const handleDeleteProject = useCallback(async (project: Project) => {
+    // Hiển thị confirm dialog với cảnh báo
+    const confirmed = await showConfirmDialog({
+      title: 'Xóa dự án',
+      message: `Bạn có chắc chắn muốn xóa dự án "${project.name}"?\n\nLưu ý: Tất cả công việc trong dự án này sẽ bị xóa vĩnh viễn.`,
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      confirmVariant: 'danger'
+    });
+    
+    if (!confirmed) return;
+
+    try {
+      await fetchJson(`/api/projects/${project.id}`, { method: 'DELETE' });
+      // Xóa project khỏi state
+      setProjects(prev => prev.filter(p => p.id !== project.id));
+      // Xóa tất cả tasks của project khỏi state
+      setTasks(prev => prev.filter(t => t.projectId !== project.id));
+      // Nếu đang xem project này, clear selection
+      if (selectedProjectId === project.id) {
+        setSelectedProjectId(null);
+      }
+      // Nếu đang edit project này, đóng modal
+      if (selectedProject?.id === project.id) {
+        setIsEditProjectModalOpen(false);
+        setSelectedProject(null);
+      }
+    } catch (error) {
+      await showAlert(error instanceof Error ? error.message : 'Không xóa được dự án', 'Lỗi');
+    }
+  }, [showConfirmDialog, selectedProjectId, selectedProject]);
+
   const handleCreateUser = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -806,6 +838,7 @@ const AppShell: React.FC = () => {
                 setSelectedProjectId(project.id);
                     // Kanban board sẽ hiển thị overlay
               }}
+              onDeleteProject={handleDeleteProject}
             />
           )}
 

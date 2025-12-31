@@ -88,7 +88,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             >
               <div className="flex items-center gap-2 md:gap-5 min-w-0 flex-1">
                 <StatusBadge task={t} />
-                <p className="text-[10px] md:text-sm font-bold text-slate-700 truncate group-hover:text-[#8907E6]">
+                <p className="text-[10px] md:text-sm font-bold text-slate-700 truncate">
                   {t.title}
                 </p>
               </div>

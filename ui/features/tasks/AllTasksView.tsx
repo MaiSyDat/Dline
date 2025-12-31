@@ -168,7 +168,7 @@ export const AllTasksView: React.FC<AllTasksViewProps> = React.memo(({
                           {task.priority === TaskPriority.HIGH ? 'Cao' : task.priority === TaskPriority.MEDIUM ? 'Trung bình' : 'Thấp'}
                         </div>
                       </div>
-                      <h4 className="text-sm font-semibold text-slate-900 mb-2 group-hover:text-[#8907E6] transition-colors">
+                      <h4 className="text-sm font-semibold text-slate-900 mb-2 transition-colors">
                         {task.title}
                       </h4>
                       {task.description && (
