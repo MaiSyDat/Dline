@@ -12,6 +12,7 @@ import { BriefcaseIcon, CalendarIcon, UserIcon } from '@heroicons/react/24/outli
 import { Task, Project, User, TaskStatus, TaskPriority } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { Avatar } from '../../components/Avatar';
+import { formatDate } from '../../utils/dateUtils';
 
 export interface AllTasksViewProps {
   /** Danh sách tất cả tasks */
@@ -74,13 +75,6 @@ export const AllTasksView: React.FC<AllTasksViewProps> = React.memo(({
   // Lấy user từ assigneeId
   const getUser = (userId: string) => {
     return users.find(u => u.id === userId);
-  };
-
-  // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   if (tasksByProject.length === 0) {
@@ -184,7 +178,7 @@ export const AllTasksView: React.FC<AllTasksViewProps> = React.memo(({
                         {task.deadline && (
                           <div className="flex items-center gap-1.5">
                             <CalendarIcon className="w-3.5 h-3.5" />
-                            <span>{formatDate(task.deadline)}</span>
+                            <span>{formatDate(task.deadline, '')}</span>
                           </div>
                         )}
                       </div>

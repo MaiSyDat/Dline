@@ -12,6 +12,7 @@ import { Project, Task, TaskStatus, User } from '@/types';
 import { StatusBadge } from '../tasks/StatusBadge';
 import { getGeminiInsights } from '@/services/geminiService';
 import { Button } from '../../components/Button';
+import { formatDate } from '../../utils/dateUtils';
 
 export interface DashboardViewProps {
   /** Danh sách projects */
@@ -96,7 +97,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
                 <div className="text-right hidden sm:block">
                   <p className="text-[9px] font-black text-slate-300 uppercase">Hạn chót</p>
                   <p className="text-xs font-bold text-slate-500">
-                    {new Date(t.deadline || '').toLocaleDateString('vi-VN')}
+                    {formatDate(t.deadline)}
                   </p>
                 </div>
                 <img

@@ -39,6 +39,7 @@ import {
 } from '@/ui/features';
 import { fetchJson } from '@/ui/utils/api';
 import { renderTextWithLinks } from '@/ui/utils/linkUtils';
+import { formatDate, formatDateTime } from '@/ui/utils/dateUtils';
 
 // Kanban board columns configuration đã được move vào TasksView component
 
@@ -1473,7 +1474,7 @@ const AppShell: React.FC = () => {
                                     <div className="flex items-center gap-2 mb-1">
                                       <p className="font-bold text-slate-900 text-sm">{author?.name || 'Người dùng'}</p>
                                       <span className="text-[9px] text-slate-400">
-                                        {new Date(note.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        {formatDateTime(note.createdAt)}
                                       </span>
                                     </div>
                                     <div className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
@@ -1544,11 +1545,11 @@ const AppShell: React.FC = () => {
                     <div className="grid grid-cols-1 gap-4 md:gap-6 pt-6 border-t border-slate-200/60">
                       <div>
                         <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Thời hạn</p>
-                        <p className="font-bold text-red-600 text-base md:text-lg">{new Date(selectedTask.deadline || '').toLocaleDateString('vi-VN')}</p>
+                        <p className="font-bold text-red-600 text-base md:text-lg">{formatDate(selectedTask.deadline)}</p>
                       </div>
                       <div>
                         <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><CalendarDaysIcon className="w-4 h-4" /> Ngày khởi tạo</p>
-                        <p className="font-bold text-slate-600 text-sm md:text-base">{new Date(selectedTask.createdAt || '').toLocaleDateString('vi-VN')}</p>
+                        <p className="font-bold text-slate-600 text-sm md:text-base">{formatDate(selectedTask.createdAt)}</p>
                       </div>
                     </div>
 

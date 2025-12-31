@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { BriefcaseIcon, PencilIcon, EyeIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Project, User } from '@/types';
 import { Avatar } from '../../components/Avatar';
+import { formatDate } from '../../utils/dateUtils';
 
 export interface ProjectsViewProps {
   /** Danh sách projects */
@@ -148,7 +149,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
               <div className="text-right">
                 <p className="text-[10px] font-black text-slate-300 uppercase">Hạn</p>
                 <p className="text-[10px] font-bold text-slate-800">
-                  {new Date(p.deadline || '').toLocaleDateString('vi-VN')}
+                  {formatDate(p.deadline)}
                 </p>
               </div>
             </div>

@@ -31,6 +31,7 @@ import { Task, TaskPriority, TaskStatus, User } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { Avatar } from '../../components/Avatar';
 import { fetchJson } from '../../utils/api';
+import { formatDateShort } from '../../utils/dateUtils';
 
 // Hook to detect mobile device
 const useIsMobile = () => {
@@ -140,10 +141,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick, isMobile = fa
         </div>
         {task.deadline && (
           <span className="text-[10px] font-semibold text-slate-400">
-            {new Date(task.deadline).toLocaleDateString('vi-VN', {
-              day: '2-digit',
-              month: '2-digit'
-            })}
+            {formatDateShort(task.deadline)}
           </span>
         )}
       </div>
