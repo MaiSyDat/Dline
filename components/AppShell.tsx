@@ -223,6 +223,226 @@ const AppShell: React.FC = () => {
   // Logout được xử lý bởi LogoutButton component (sử dụng NextAuth signOut)
   // Không cần handleLogout function nữa
 
+  // All hooks must be called before any early returns
+  const filteredTasks = useMemo(() => {
+    return selectedProjectId ? tasks.filter(t => t.projectId === selectedProjectId) : tasks;
+  }, [tasks, selectedProjectId]);
+
+  // Callbacks cho Sidebar
+  const handleLogoClick = useCallback(() => {
+    setActiveTab('dashboard');
+    setSelectedProjectId(null);
+  }, []);
+
+  const handleTabChange = useCallback(async (tab: 'dashboard' | 'projects' | 'tasks' | 'team') => {
+    // Kiểm tra xem có modal nào đang mở không
+    const hasOpenModal = isTaskModalOpen || isEditTaskModalOpen || isProjectModalOpen || isEditProjectModalOpen || isUserModalOpen || selectedUser !== null || selectedTask !== null;
+    
+    if (hasOpenModal) {
+      // Xác định loại modal và thông báo phù hợp
+      let warningMessage = '';
+      if (isTaskModalOpen) {
+        warningMessage = 'Công việc chưa được tạo. Bạn có chắc chắn muốn thoát không?';
+      } else if (isEditTaskModalOpen) {
+        warningMessage = 'Thay đổi công việc chưa được lưu. Bạn có chắc chắn muốn thoát không?';
+      } else if (isProjectModalOpen) {
+        warningMessage = 'Dự án chưa được tạo. Bạn có chắc chắn muốn thoát không?';
+      } else if (isEditProjectModalOpen) {
+        warningMessage = 'Thay đổi dự án chưa được lưu. Bạn có chắc chắn muốn thoát không?';
+      } else if (isUserModalOpen) {
+        warningMessage = 'Nhân sự chưa được tạo. Bạn có chắc chắn muốn thoát không?';
+      } else if (selectedUser) {
+        warningMessage = 'Thay đổi nhân sự chưa được lưu. Bạn có chắc chắn muốn thoát không?';
+      } else if (selectedTask) {
+        warningMessage = 'Bạn đang xem chi tiết công việc. Bạn có chắc chắn muốn thoát không?';
+      }
+      
+      if (warningMessage) {
+        const confirmed = await showConfirmDialog({
+          message: warningMessage,
+          confirmText: 'Có, thoát',
+          cancelText: 'Không, ở lại',
+          confirmVariant: 'primary'
+        });
+        if (!confirmed) {
+          // Người dùng chọn "Không" - không chuyển tab
+          return;
+        }
+      }
+      
+      // Người dùng chọn "Có" - đóng tất cả modal và chuyển tab
+      setIsTaskModalOpen(false);
+      setIsEditTaskModalOpen(false);
+      setIsProjectModalOpen(false);
+      setIsEditProjectModalOpen(false);
+      setIsUserModalOpen(false);
+      setSelectedUser(null);
+      setSelectedTask(null);
+      setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', startDate: new Date().toISOString().split('T')[0], deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
+      setPreviewImages([]);
+      setNewProjectMembers([]);
+      setEditUserRole(UserRole.EMPLOYEE);
+      setEditUserAvatar('');
+      setSelectedAvatar('');
+    }
+    
+    // Chuyển tab và clear selected project
+    setActiveTab(tab);
+    setSelectedProjectId(null);
+  }, [
+    isTaskModalOpen,
+    isEditTaskModalOpen,
+    isProjectModalOpen,
+    isEditProjectModalOpen,
+    isUserModalOpen,
+    selectedUser,
+    selectedTask,
+    showConfirmDialog
+  ]);
+
+  const handleProjectSelect = useCallback((id: string | null) => { 
+    setSelectedProjectId(id); 
+    // Không tự động chuyển tab, Kanban board sẽ hiển thị overlay
+  }, []);
+
+  // Callbacks cho Header
+  const handleHeaderBack = useCallback(() => setSelectedProjectId(null), []);
+  const handleHeaderCreateProject = useCallback(() => setIsProjectModalOpen(true), []);
+  const handleHeaderCreateUser = useCallback(() => setIsUserModalOpen(true), []);
+  const handleHeaderCreateTask = useCallback(() => {
+    // Tự động set projectId nếu đang ở trong một dự án
+    if (selectedProjectId) {
+      setNewTaskForm(prev => ({ ...prev, projectId: selectedProjectId }));
+    }
+    setIsTaskModalOpen(true);
+  }, [selectedProjectId]);
+
+  // Callbacks cho MobileNav
+  const handleMobileTabChange = useCallback((tab: 'dashboard' | 'projects' | 'tasks' | 'team') => { 
+    setActiveTab(tab); 
+    setSelectedProjectId(null); 
+  }, []);
+  const handleClearSelection = useCallback(() => setSelectedProjectId(null), []);
+
+  // Helper functions để kiểm tra và đóng modal với cảnh báo
+  const checkAndCloseTaskModal = useCallback(async () => {
+    const hasChanges = newTaskForm.title.trim() || newTaskForm.description.trim() || newTaskForm.assigneeId || newTaskForm.deadline || previewImages.length > 0;
+    if (hasChanges) {
+      const confirmed = await showConfirmDialog({
+        message: 'Công việc chưa được tạo. Bạn có chắc chắn muốn thoát không?',
+        confirmText: 'Có, thoát',
+        cancelText: 'Không, ở lại',
+        confirmVariant: 'primary'
+      });
+      if (!confirmed) return;
+    }
+    setIsTaskModalOpen(false);
+    setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', startDate: new Date().toISOString().split('T')[0], deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
+    setPreviewImages([]);
+  }, [newTaskForm, previewImages, showConfirmDialog]);
+
+  const checkAndCloseEditTaskModal = useCallback(async () => {
+    if (!selectedTask) return;
+    // Kiểm tra xem có thay đổi không (so sánh với selectedTask ban đầu)
+    // Vì form sửa dùng defaultValue, nên chỉ cần kiểm tra previewImages
+    const hasChanges = previewImages.length > 0;
+    if (hasChanges) {
+      const confirmed = await showConfirmDialog({
+        message: 'Thay đổi công việc chưa được lưu. Bạn có chắc chắn muốn thoát không?',
+        confirmText: 'Có, thoát',
+        cancelText: 'Không, ở lại',
+        confirmVariant: 'primary'
+      });
+      if (!confirmed) return;
+    }
+    setIsEditTaskModalOpen(false);
+    setPreviewImages([]);
+    setEditTaskAssigneeId('');
+  }, [selectedTask, previewImages, showConfirmDialog]);
+
+  const checkAndCloseProjectModal = useCallback(async () => {
+    // Kiểm tra form có dữ liệu không (cần đọc từ form, nhưng vì dùng FormData nên khó kiểm tra)
+    // Tạm thời luôn hiển thị cảnh báo nếu modal đang mở
+    const confirmed = await showConfirmDialog({
+      message: 'Dự án chưa được tạo. Bạn có chắc chắn muốn thoát không?',
+      confirmText: 'Có, thoát',
+      cancelText: 'Không, ở lại',
+      confirmVariant: 'primary'
+    });
+    if (!confirmed) return;
+    setIsProjectModalOpen(false);
+  }, [showConfirmDialog]);
+
+  const checkAndCloseEditProjectModal = useCallback(async () => {
+    // Kiểm tra xem có thay đổi không (so sánh với selectedProject ban đầu)
+    // Vì form sửa dùng defaultValue, nên chỉ cần kiểm tra newProjectMembers
+    const hasChanges = selectedProject && (
+      newProjectMembers.length !== selectedProject.memberIds.length ||
+      newProjectMembers.some(id => !selectedProject.memberIds.includes(id))
+    );
+    if (hasChanges) {
+      const confirmed = await showConfirmDialog({
+        message: 'Thay đổi dự án chưa được lưu. Bạn có chắc chắn muốn thoát không?',
+        confirmText: 'Có, thoát',
+        cancelText: 'Không, ở lại',
+        confirmVariant: 'primary'
+      });
+      if (!confirmed) return;
+    }
+    setIsEditProjectModalOpen(false);
+    setSelectedProject(null);
+    setNewProjectMembers([]);
+  }, [selectedProject, newProjectMembers, showConfirmDialog]);
+
+  const checkAndCloseUserModal = useCallback(async () => {
+    // Kiểm tra form có dữ liệu không
+    // Tạm thời luôn hiển thị cảnh báo nếu modal đang mở
+    const confirmed = await showConfirmDialog({
+      message: 'Nhân sự chưa được tạo. Bạn có chắc chắn muốn thoát không?',
+      confirmText: 'Có, thoát',
+      cancelText: 'Không, ở lại',
+      confirmVariant: 'primary'
+    });
+    if (!confirmed) return;
+    setIsUserModalOpen(false);
+    setNewUserRole(UserRole.EMPLOYEE);
+    setSelectedAvatar('');
+  }, [showConfirmDialog]);
+
+  const checkAndCloseEditUserModal = useCallback(async () => {
+    if (!selectedUser) return;
+    // Kiểm tra xem có thay đổi không
+    // Vì form sửa dùng defaultValue, nên khó kiểm tra chính xác
+    // Tạm thời luôn hiển thị cảnh báo
+    const confirmed = await showConfirmDialog({
+      message: 'Thay đổi nhân sự chưa được lưu. Bạn có chắc chắn muốn thoát không?',
+      confirmText: 'Có, thoát',
+      cancelText: 'Không, ở lại',
+      confirmVariant: 'primary'
+    });
+    if (!confirmed) return;
+    setSelectedUser(null);
+    setEditUserRole(UserRole.EMPLOYEE);
+    setEditUserAvatar('');
+    setCurrentUserPassword('');
+  }, [selectedUser, showConfirmDialog]);
+
+  const checkAndCloseViewTaskModal = useCallback(async () => {
+    // Kiểm tra xem có thay đổi không (ghi chú hoặc status)
+    const hasChanges = newNoteContent.trim().length > 0;
+    if (hasChanges) {
+      const confirmed = await showConfirmDialog({
+        message: 'Bạn đang thực hiện dở tác vụ (ghi chú chưa được lưu). Bạn có chắc chắn muốn thoát không?',
+        confirmText: 'Có, thoát',
+        cancelText: 'Không, ở lại',
+        confirmVariant: 'primary'
+      });
+      if (!confirmed) return;
+    }
+    setSelectedTask(null);
+    setNewNoteContent('');
+  }, [newNoteContent, showConfirmDialog]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
@@ -500,225 +720,6 @@ const AppShell: React.FC = () => {
     }
   };
 
-  const filteredTasks = useMemo(() => {
-    return selectedProjectId ? tasks.filter(t => t.projectId === selectedProjectId) : tasks;
-  }, [tasks, selectedProjectId]);
-
-  // Callbacks cho Sidebar
-  const handleLogoClick = useCallback(() => {
-    setActiveTab('dashboard');
-    setSelectedProjectId(null);
-  }, []);
-
-  const handleTabChange = useCallback(async (tab: 'dashboard' | 'projects' | 'tasks' | 'team') => {
-    // Kiểm tra xem có modal nào đang mở không
-    const hasOpenModal = isTaskModalOpen || isEditTaskModalOpen || isProjectModalOpen || isEditProjectModalOpen || isUserModalOpen || selectedUser !== null || selectedTask !== null;
-    
-    if (hasOpenModal) {
-      // Xác định loại modal và thông báo phù hợp
-      let warningMessage = '';
-      if (isTaskModalOpen) {
-        warningMessage = 'Công việc chưa được tạo. Bạn có chắc chắn muốn thoát không?';
-      } else if (isEditTaskModalOpen) {
-        warningMessage = 'Thay đổi công việc chưa được lưu. Bạn có chắc chắn muốn thoát không?';
-      } else if (isProjectModalOpen) {
-        warningMessage = 'Dự án chưa được tạo. Bạn có chắc chắn muốn thoát không?';
-      } else if (isEditProjectModalOpen) {
-        warningMessage = 'Thay đổi dự án chưa được lưu. Bạn có chắc chắn muốn thoát không?';
-      } else if (isUserModalOpen) {
-        warningMessage = 'Nhân sự chưa được tạo. Bạn có chắc chắn muốn thoát không?';
-      } else if (selectedUser) {
-        warningMessage = 'Thay đổi nhân sự chưa được lưu. Bạn có chắc chắn muốn thoát không?';
-      } else if (selectedTask) {
-        warningMessage = 'Bạn đang xem chi tiết công việc. Bạn có chắc chắn muốn thoát không?';
-      }
-      
-      if (warningMessage) {
-        const confirmed = await showConfirmDialog({
-          message: warningMessage,
-          confirmText: 'Có, thoát',
-          cancelText: 'Không, ở lại',
-          confirmVariant: 'primary'
-        });
-        if (!confirmed) {
-          // Người dùng chọn "Không" - không chuyển tab
-          return;
-        }
-      }
-      
-      // Người dùng chọn "Có" - đóng tất cả modal và chuyển tab
-      setIsTaskModalOpen(false);
-      setIsEditTaskModalOpen(false);
-      setIsProjectModalOpen(false);
-      setIsEditProjectModalOpen(false);
-      setIsUserModalOpen(false);
-      setSelectedUser(null);
-      setSelectedTask(null);
-      setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', startDate: new Date().toISOString().split('T')[0], deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
-      setPreviewImages([]);
-      setNewProjectMembers([]);
-      setEditUserRole(UserRole.EMPLOYEE);
-      setEditUserAvatar('');
-      setSelectedAvatar('');
-    }
-    
-    // Chuyển tab và clear selected project
-    setActiveTab(tab);
-    setSelectedProjectId(null);
-  }, [
-    isTaskModalOpen,
-    isEditTaskModalOpen,
-    isProjectModalOpen,
-    isEditProjectModalOpen,
-    isUserModalOpen,
-    selectedUser,
-    selectedTask,
-    showConfirmDialog
-  ]);
-
-  const handleProjectSelect = useCallback((id: string | null) => { 
-    setSelectedProjectId(id); 
-    // Không tự động chuyển tab, Kanban board sẽ hiển thị overlay
-  }, []);
-
-  // Callbacks cho Header
-  const handleHeaderBack = useCallback(() => setSelectedProjectId(null), []);
-  const handleHeaderCreateProject = useCallback(() => setIsProjectModalOpen(true), []);
-  const handleHeaderCreateUser = useCallback(() => setIsUserModalOpen(true), []);
-  const handleHeaderCreateTask = useCallback(() => {
-    // Tự động set projectId nếu đang ở trong một dự án
-    if (selectedProjectId) {
-      setNewTaskForm(prev => ({ ...prev, projectId: selectedProjectId }));
-    }
-    setIsTaskModalOpen(true);
-  }, [selectedProjectId]);
-
-  // Callbacks cho MobileNav
-  const handleMobileTabChange = useCallback((tab: 'dashboard' | 'projects' | 'tasks' | 'team') => { 
-    setActiveTab(tab); 
-    setSelectedProjectId(null); 
-  }, []);
-  const handleClearSelection = useCallback(() => setSelectedProjectId(null), []);
-
-  // Helper functions để kiểm tra và đóng modal với cảnh báo
-  const checkAndCloseTaskModal = useCallback(async () => {
-    const hasChanges = newTaskForm.title.trim() || newTaskForm.description.trim() || newTaskForm.assigneeId || newTaskForm.deadline || previewImages.length > 0;
-    if (hasChanges) {
-      const confirmed = await showConfirmDialog({
-        message: 'Công việc chưa được tạo. Bạn có chắc chắn muốn thoát không?',
-        confirmText: 'Có, thoát',
-        cancelText: 'Không, ở lại',
-        confirmVariant: 'primary'
-      });
-      if (!confirmed) return;
-    }
-    setIsTaskModalOpen(false);
-    setNewTaskForm({ projectId: '', title: '', description: '', assigneeId: '', startDate: new Date().toISOString().split('T')[0], deadline: '', priority: TaskPriority.MEDIUM, isBug: false });
-    setPreviewImages([]);
-  }, [newTaskForm, previewImages, showConfirmDialog]);
-
-  const checkAndCloseEditTaskModal = useCallback(async () => {
-    if (!selectedTask) return;
-    // Kiểm tra xem có thay đổi không (so sánh với selectedTask ban đầu)
-    // Vì form sửa dùng defaultValue, nên chỉ cần kiểm tra previewImages
-    const hasChanges = previewImages.length > 0;
-    if (hasChanges) {
-      const confirmed = await showConfirmDialog({
-        message: 'Thay đổi công việc chưa được lưu. Bạn có chắc chắn muốn thoát không?',
-        confirmText: 'Có, thoát',
-        cancelText: 'Không, ở lại',
-        confirmVariant: 'primary'
-      });
-      if (!confirmed) return;
-    }
-    setIsEditTaskModalOpen(false);
-    setPreviewImages([]);
-    setEditTaskAssigneeId('');
-  }, [selectedTask, previewImages, showConfirmDialog]);
-
-  const checkAndCloseProjectModal = useCallback(async () => {
-    // Kiểm tra form có dữ liệu không (cần đọc từ form, nhưng vì dùng FormData nên khó kiểm tra)
-    // Tạm thời luôn hiển thị cảnh báo nếu modal đang mở
-    const confirmed = await showConfirmDialog({
-      message: 'Dự án chưa được tạo. Bạn có chắc chắn muốn thoát không?',
-      confirmText: 'Có, thoát',
-      cancelText: 'Không, ở lại',
-      confirmVariant: 'primary'
-    });
-    if (!confirmed) return;
-    setIsProjectModalOpen(false);
-  }, [showConfirmDialog]);
-
-  const checkAndCloseEditProjectModal = useCallback(async () => {
-    // Kiểm tra xem có thay đổi không (so sánh với selectedProject ban đầu)
-    // Vì form sửa dùng defaultValue, nên chỉ cần kiểm tra newProjectMembers
-    const hasChanges = selectedProject && (
-      newProjectMembers.length !== selectedProject.memberIds.length ||
-      newProjectMembers.some(id => !selectedProject.memberIds.includes(id))
-    );
-    if (hasChanges) {
-      const confirmed = await showConfirmDialog({
-        message: 'Thay đổi dự án chưa được lưu. Bạn có chắc chắn muốn thoát không?',
-        confirmText: 'Có, thoát',
-        cancelText: 'Không, ở lại',
-        confirmVariant: 'primary'
-      });
-      if (!confirmed) return;
-    }
-    setIsEditProjectModalOpen(false);
-    setSelectedProject(null);
-    setNewProjectMembers([]);
-  }, [selectedProject, newProjectMembers, showConfirmDialog]);
-
-  const checkAndCloseUserModal = useCallback(async () => {
-    // Kiểm tra form có dữ liệu không
-    // Tạm thời luôn hiển thị cảnh báo nếu modal đang mở
-    const confirmed = await showConfirmDialog({
-      message: 'Nhân sự chưa được tạo. Bạn có chắc chắn muốn thoát không?',
-      confirmText: 'Có, thoát',
-      cancelText: 'Không, ở lại',
-      confirmVariant: 'primary'
-    });
-    if (!confirmed) return;
-    setIsUserModalOpen(false);
-    setNewUserRole(UserRole.EMPLOYEE);
-    setSelectedAvatar('');
-  }, [showConfirmDialog]);
-
-  const checkAndCloseEditUserModal = useCallback(async () => {
-    if (!selectedUser) return;
-    // Kiểm tra xem có thay đổi không
-    // Vì form sửa dùng defaultValue, nên khó kiểm tra chính xác
-    // Tạm thời luôn hiển thị cảnh báo
-    const confirmed = await showConfirmDialog({
-      message: 'Thay đổi nhân sự chưa được lưu. Bạn có chắc chắn muốn thoát không?',
-      confirmText: 'Có, thoát',
-      cancelText: 'Không, ở lại',
-      confirmVariant: 'primary'
-    });
-    if (!confirmed) return;
-    setSelectedUser(null);
-    setEditUserRole(UserRole.EMPLOYEE);
-    setEditUserAvatar('');
-    setCurrentUserPassword('');
-  }, [selectedUser, showConfirmDialog]);
-
-  const checkAndCloseViewTaskModal = useCallback(async () => {
-    // Kiểm tra xem có thay đổi không (ghi chú hoặc status)
-    const hasChanges = newNoteContent.trim().length > 0;
-    if (hasChanges) {
-      const confirmed = await showConfirmDialog({
-        message: 'Bạn đang thực hiện dở tác vụ (ghi chú chưa được lưu). Bạn có chắc chắn muốn thoát không?',
-        confirmText: 'Có, thoát',
-        cancelText: 'Không, ở lại',
-        confirmVariant: 'primary'
-      });
-      if (!confirmed) return;
-    }
-    setSelectedTask(null);
-    setNewNoteContent('');
-  }, [newNoteContent, showConfirmDialog]);
-
   // StatusBadge đã được tách thành component riêng trong ui/features/tasks/StatusBadge.tsx
 
   // Hiển thị loading khi đang check session hoặc đang load data
@@ -872,7 +873,7 @@ const AppShell: React.FC = () => {
       />
 
       {isUserModalOpen && (
-        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseUserModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
@@ -943,7 +944,7 @@ const AppShell: React.FC = () => {
       )}
 
       {selectedUser && (
-        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseEditUserModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
@@ -1022,7 +1023,7 @@ const AppShell: React.FC = () => {
       )}
 
       {isProjectModalOpen && (
-        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseProjectModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
@@ -1084,7 +1085,7 @@ const AppShell: React.FC = () => {
       )}
 
       {isEditProjectModalOpen && selectedProject && (
-        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseEditProjectModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
@@ -1146,7 +1147,7 @@ const AppShell: React.FC = () => {
       )}
 
       {isTaskModalOpen && (
-        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
@@ -1359,7 +1360,7 @@ const AppShell: React.FC = () => {
       )}
 
       {selectedTask && (
-        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseViewTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
@@ -1543,7 +1544,7 @@ const AppShell: React.FC = () => {
       )}
 
       {isEditTaskModalOpen && selectedTask && (
-        <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseEditTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>

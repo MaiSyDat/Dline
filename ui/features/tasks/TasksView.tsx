@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -31,6 +31,23 @@ import { Task, TaskPriority, TaskStatus, User } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { Avatar } from '../../components/Avatar';
 import { fetchJson } from '../../utils/api';
+
+// Hook to detect mobile device
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return isMobile;
+};
 
 export interface TasksViewProps {
   /** Danh sách tasks */
@@ -59,9 +76,10 @@ interface TaskCardProps {
   task: Task;
   users: User[];
   onClick: () => void;
+  isMobile?: boolean;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick, isMobile = false }) => {
   const {
     attributes,
     listeners,
@@ -69,7 +87,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick }) => {
     transform,
     transition,
     isDragging
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: task.id, disabled: isMobile });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -83,10 +101,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick }) => {
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...(isMobile ? {} : attributes)}
+      {...(isMobile ? {} : listeners)}
       onClick={onClick}
-      className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-[#8907E6]/30 transition-all cursor-grab active:cursor-grabbing group"
+      className={`bg-white p-3 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-[#8907E6]/30 transition-all group relative ${
+        isMobile ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+      }`}
     >
       <div className="flex justify-between items-start mb-2.5">
         <StatusBadge task={task} />
@@ -139,13 +159,15 @@ interface KanbanColumnProps {
   tasks: Task[];
   users: User[];
   onTaskClick: (task: Task) => void;
+  isMobile?: boolean;
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({
   column,
   tasks,
   users,
-  onTaskClick
+  onTaskClick,
+  isMobile = false
 }) => {
   const taskIds = tasks.map(t => t.id);
   
@@ -179,6 +201,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
               task={task}
               users={users}
               onClick={() => onTaskClick(task)}
+              isMobile={isMobile}
             />
           ))}
         </div>
@@ -198,6 +221,7 @@ export const TasksView: React.FC<TasksViewProps> = React.memo(({
 }) => {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>(tasks);
+  const isMobile = useIsMobile();
 
   // Update optimistic tasks when tasks prop changes
   React.useEffect(() => {
@@ -205,18 +229,17 @@ export const TasksView: React.FC<TasksViewProps> = React.memo(({
   }, [tasks]);
 
   // Configure sensors for drag and drop
-  // TouchSensor for mobile devices, PointerSensor for desktop
+  // Only enable drag on desktop, disable on mobile
+  // Always create the same number of sensors to avoid React hook dependency issues
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8 // Require 8px of movement before activating drag
-      }
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200, // 200ms delay before activating drag on touch
-        tolerance: 5 // Allow 5px of movement during delay
-      }
+      activationConstraint: isMobile
+        ? {
+            distance: 999999 // Effectively disable on mobile
+          }
+        : {
+            distance: 8 // Require 8px of movement before activating drag
+          }
     })
   );
 
@@ -362,7 +385,7 @@ export const TasksView: React.FC<TasksViewProps> = React.memo(({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-3 overflow-x-auto pb-4 kanban-scrollbar h-full">
+        <div className={`flex gap-3 overflow-x-auto kanban-scrollbar ${isMobile ? 'pb-8' : 'pb-4'} h-full`}>
           {boardColumns.map(column => (
             <KanbanColumn
               key={column.id}
@@ -370,6 +393,7 @@ export const TasksView: React.FC<TasksViewProps> = React.memo(({
               tasks={tasksByStatus[column.id] || []}
               users={users}
               onTaskClick={onTaskClick}
+              isMobile={isMobile}
             />
           ))}
         </div>
@@ -399,6 +423,13 @@ export const TasksView: React.FC<TasksViewProps> = React.memo(({
           ) : null}
         </DragOverlay>
       </DndContext>
+      
+      {/* Mobile tooltip - hiển thị dưới thanh scroll, cố định, chỉ text */}
+      {isMobile && (
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-slate-500 text-[10px] text-center pointer-events-none z-10">
+          Vào xem chi tiết để thay đổi trạng thái
+        </div>
+      )}
     </div>
   );
 });
