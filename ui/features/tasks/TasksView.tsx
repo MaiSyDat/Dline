@@ -104,7 +104,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, users, onClick, isMobile = fa
       {...(isMobile ? {} : attributes)}
       {...(isMobile ? {} : listeners)}
       onClick={onClick}
-      className={`bg-white p-3 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-[#8907E6]/30 transition-all group relative ${
+      className={`bg-white p-3 rounded-lg border border-slate-100 shadow-sm hover:shadow-md hover:border-purple/30 transition-all group relative ${
         isMobile ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
       }`}
     >
@@ -192,7 +192,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
         <div
           ref={setNodeRef}
           className={`flex-1 bg-white rounded-lg p-2 space-y-2 border shadow-sm transition-all ${
-            isOver ? 'border-[#8907E6] border-2 bg-[#8907E6]/10 shadow-md' : 'border-slate-200 shadow-sm'
+            isOver ? 'border-purple border-2 bg-purple/10 shadow-md' : 'border-slate-200 shadow-sm'
           }`}
         >
           {tasks.map(task => (
@@ -401,7 +401,7 @@ export const TasksView: React.FC<TasksViewProps> = React.memo(({
         {/* Drag overlay - shows task being dragged */}
         <DragOverlay>
           {activeTask ? (
-            <div className="bg-white p-3 rounded-lg border-2 border-[#8907E6] shadow-xl opacity-95 rotate-1">
+            <div className="bg-white p-3 rounded-lg border-2 border-purple shadow-xl opacity-95 rotate-1">
               <div className="flex justify-between items-start mb-2.5">
                 <StatusBadge task={activeTask} />
                 <div

@@ -76,12 +76,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
           <div className="h-1 w-full" style={{ backgroundColor: p.color && p.color !== '#0F172A' && p.color !== 'rgb(15, 23, 42)' ? p.color : '#8907E6' }}></div>
           <div className="p-4 md:p-5">
             <div className="flex justify-between items-start mb-3">
-              <div className="p-1.5 bg-white border border-slate-200 rounded group-hover:bg-[#8907E6]/5 transition-colors">
+              <div className="p-1.5 bg-white border border-slate-200 rounded group-hover:bg-purple/5 transition-colors">
                 <BriefcaseIcon className="w-4 h-4 text-slate-300" />
               </div>
               <span className={`px-2 py-0.5 text-[10px] font-black rounded border uppercase tracking-widest ${
                 p.status === 'active' 
-                  ? 'bg-[#8907E6]/10 text-[#8907E6] border-[#8907E6]/20' 
+                  ? 'bg-purple/10 text-purple border-purple/20' 
                   : p.status === 'completed' 
                   ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
                   : 'bg-slate-50 text-slate-600 border-slate-100'
@@ -97,7 +97,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
                 {onViewProject && (
                   <button
                     onClick={() => onViewProject(p)}
-                    className="p-1.5 text-slate-400 hover:text-[#8907E6] hover:bg-[#8907E6]/5 rounded transition-all"
+                    className="p-1.5 text-slate-400 hover:text-purple hover:bg-purple/5 rounded transition-all"
                     title="Xem dự án"
                   >
                     <EyeIcon className="w-4 h-4" />
@@ -106,7 +106,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = React.memo(({
                 {onEditProject && (
                   <button
                     onClick={() => onEditProject(p)}
-                    className="p-1.5 text-slate-400 hover:text-[#FF33E7] hover:bg-[#FF33E7]/5 rounded transition-all"
+                    className="p-1.5 text-slate-400 hover:text-accent hover:bg-accent/5 rounded transition-all"
                     title="Sửa dự án"
                   >
                     <PencilIcon className="w-4 h-4" />

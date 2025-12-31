@@ -906,11 +906,11 @@ const AppShell: React.FC = () => {
       />
 
       {isUserModalOpen && (
-        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-400 flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseUserModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <div className="hidden sm:block h-4 w-px bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Thêm nhân sự</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
@@ -922,10 +922,10 @@ const AppShell: React.FC = () => {
               <form onSubmit={handleCreateUser} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
                 <div className="lg:col-span-2 space-y-8 md:space-y-12">
                   <div className="space-y-4 md:space-y-6">
-                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
+                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
                   </div>
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Thông tin tài khoản</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-purple pl-4 md:pl-5">Thông tin tài khoản</h4>
                     <div className="space-y-4 pl-4 md:pl-6">
                       <div className="space-y-2">
                         <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
@@ -964,7 +964,7 @@ const AppShell: React.FC = () => {
                       />
                     </div>
                     <div className="pt-4 md:pt-8">
-                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-purple text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
                         {isSubmitting ? 'Đang tạo...' : 'Tạo tài khoản'}
                       </button>
                     </div>
@@ -977,11 +977,11 @@ const AppShell: React.FC = () => {
       )}
 
       {selectedUser && (
-        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-400 flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseEditUserModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <div className="hidden sm:block h-4 w-px bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Chỉnh sửa nhân sự</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
@@ -993,10 +993,10 @@ const AppShell: React.FC = () => {
               <form onSubmit={handleUpdateUser} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
                 <div className="lg:col-span-2 space-y-8 md:space-y-12">
                   <div className="space-y-4 md:space-y-6">
-                    <input required name="name" defaultValue={selectedUser.name} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
+                    <input required name="name" defaultValue={selectedUser.name} className="w-full px-4 py-2.5 border border-slate-200 rounded bg-slate-50 text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Họ tên nhân sự..." />
                   </div>
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Thông tin tài khoản</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-purple pl-4 md:pl-5">Thông tin tài khoản</h4>
                     <div className="space-y-4 pl-4 md:pl-6">
                       <div className="space-y-2">
                         <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</label>
@@ -1043,7 +1043,7 @@ const AppShell: React.FC = () => {
                       />
                     </div>
                     <div className="pt-4 md:pt-8">
-                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-purple text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
                         {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
                       </button>
                     </div>
@@ -1056,11 +1056,11 @@ const AppShell: React.FC = () => {
       )}
 
       {isProjectModalOpen && (
-        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-400 flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseProjectModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <div className="hidden sm:block h-4 w-px bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Khởi tạo dự án mới</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
@@ -1072,11 +1072,11 @@ const AppShell: React.FC = () => {
               <form onSubmit={handleCreateProject} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
                 <div className="lg:col-span-2 space-y-8 md:space-y-12">
                   <div className="space-y-4 md:space-y-6">
-                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Tên dự án..." />
+                    <input required name="name" className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Tên dự án..." />
                   </div>
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Mô tả</h4>
-                    <textarea name="description" rows={8} className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" placeholder="Mô tả dự án..." />
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-purple pl-4 md:pl-5">Mô tả</h4>
+                    <textarea name="description" rows={8} className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-loose whitespace-pre-wrap" placeholder="Mô tả dự án..." />
                   </div>
                 </div>
                 <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
@@ -1105,7 +1105,7 @@ const AppShell: React.FC = () => {
                       </div>
                     </div>
                     <div className="pt-4 md:pt-8">
-                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-purple text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
                         {isSubmitting ? 'Đang tạo...' : 'Xác nhận dự án'}
                       </button>
                     </div>
@@ -1118,11 +1118,11 @@ const AppShell: React.FC = () => {
       )}
 
       {isEditProjectModalOpen && selectedProject && (
-        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[400] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-400 flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseEditProjectModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <div className="hidden sm:block h-4 w-px bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Chỉnh sửa dự án</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
@@ -1134,11 +1134,11 @@ const AppShell: React.FC = () => {
               <form onSubmit={handleUpdateProject} className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-16">
                 <div className="lg:col-span-2 space-y-8 md:space-y-12">
                   <div className="space-y-4 md:space-y-6">
-                    <input required name="name" defaultValue={selectedProject.name} className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Tên dự án..." />
+                    <input required name="name" defaultValue={selectedProject.name} className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" placeholder="Tên dự án..." />
                   </div>
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Mô tả</h4>
-                    <textarea name="description" rows={8} defaultValue={selectedProject.description} className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" placeholder="Mô tả dự án..." />
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-purple pl-4 md:pl-5">Mô tả</h4>
+                    <textarea name="description" rows={8} defaultValue={selectedProject.description} className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-loose whitespace-pre-wrap" placeholder="Mô tả dự án..." />
                   </div>
                 </div>
                 <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
@@ -1167,7 +1167,7 @@ const AppShell: React.FC = () => {
                       </div>
                     </div>
                     <div className="pt-4 md:pt-8">
-                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
+                      <button type="submit" disabled={isSubmitting} className="w-full py-3 md:py-4 bg-purple text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60">
                         {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật dự án'}
                       </button>
                     </div>
@@ -1180,11 +1180,11 @@ const AppShell: React.FC = () => {
       )}
 
       {isTaskModalOpen && (
-        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-500 flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <div className="hidden sm:block h-4 w-px bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Giao việc mới</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
@@ -1249,7 +1249,7 @@ const AppShell: React.FC = () => {
                     <input 
                       required 
                       name="title" 
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" 
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" 
                       placeholder="Tiêu đề công việc..." 
                       value={newTaskForm.title}
                       onChange={(e) => setNewTaskForm(prev => ({ ...prev, title: e.target.value }))}
@@ -1257,11 +1257,11 @@ const AppShell: React.FC = () => {
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Nội dung yêu cầu</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-purple pl-4 md:pl-5">Nội dung yêu cầu</h4>
                     <textarea 
                       name="description" 
                       rows={8} 
-                      className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" 
+                      className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-loose whitespace-pre-wrap" 
                       placeholder="Chi tiết quy trình... (Có thể dán link: https://example.com)" 
                       value={newTaskForm.description}
                       onChange={(e) => setNewTaskForm(prev => ({ ...prev, description: e.target.value }))}
@@ -1269,12 +1269,12 @@ const AppShell: React.FC = () => {
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#FF33E7] pl-4 md:pl-5">Hình ảnh đính kèm ({previewImages.length})</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Hình ảnh đính kèm ({previewImages.length})</h4>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pl-4 md:pl-6">
                       {previewImages.map((img, i) => (
                         <div
                           key={i}
-                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-pointer hover:border-[#FF33E7] transition-all"
+                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-pointer hover:border-accent transition-all"
                         >
                           <img src={img} className="w-full h-full object-cover" />
                           <button 
@@ -1286,7 +1286,7 @@ const AppShell: React.FC = () => {
                           </button>
                         </div>
                       ))}
-                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-[#FF33E7] hover:border-[#FF33E7] cursor-pointer transition-colors">
+                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-accent hover:border-accent cursor-pointer transition-colors">
                         <PlusIcon className="w-5 h-5 md:w-6 md:h-6" />
                         <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
                       </label>
@@ -1356,7 +1356,7 @@ const AppShell: React.FC = () => {
                               required
                               name="startDate" 
                               type="date" 
-                              className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-slate-900 text-base md:text-lg" 
+                              className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white font-bold text-slate-900 text-base md:text-lg" 
                               value={newTaskForm.startDate}
                               onChange={(e) => setNewTaskForm(prev => ({ ...prev, startDate: e.target.value }))}
                             />
@@ -1366,7 +1366,7 @@ const AppShell: React.FC = () => {
                           <input 
                             name="deadline" 
                             type="date" 
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-red-600 text-base md:text-lg" 
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white font-bold text-red-600 text-base md:text-lg" 
                             value={newTaskForm.deadline}
                             onChange={(e) => setNewTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
                           />
@@ -1379,7 +1379,7 @@ const AppShell: React.FC = () => {
                       <button 
                         type="submit" 
                         disabled={isSubmitting}
-                        className="w-full py-3 md:py-4 bg-[#FF33E7] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#E62DD1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60"
+                        className="w-full py-3 md:py-4 bg-accent text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#E62DD1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60"
                       >
                         {isSubmitting ? 'Đang tạo...' : 'Kích hoạt quy trình'}
                       </button>
@@ -1393,11 +1393,11 @@ const AppShell: React.FC = () => {
       )}
 
       {selectedTask && (
-        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-500 flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseViewTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <div className="hidden sm:block h-4 w-px bg-slate-300 mx-2"></div>
               <div className="flex items-center gap-2 truncate">
                 <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: projects.find(p => p.id === selectedTask.projectId)?.color }}></div>
                 <span className="text-[9px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] truncate">{projects.find(p => p.id === selectedTask.projectId)?.name}</span>
@@ -1452,14 +1452,14 @@ const AppShell: React.FC = () => {
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Nội dung yêu cầu</h4>
-                    <div className="text-slate-600 leading-relaxed md:leading-[2] text-base md:text-lg whitespace-pre-wrap pl-4 md:pl-6">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-purple pl-4 md:pl-5">Nội dung yêu cầu</h4>
+                    <div className="text-slate-600 leading-relaxed md:leading-loose text-base md:text-lg whitespace-pre-wrap pl-4 md:pl-6">
                       {selectedTask.description ? renderTextWithLinks(selectedTask.description) : 'Không có mô tả chi tiết cho nhiệm vụ này.'}
                     </div>
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#FF33E7] pl-4 md:pl-5">Ghi chú</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Ghi chú</h4>
                     <div className="pl-4 md:pl-6 space-y-4">
                       {selectedTask.notes && selectedTask.notes.length > 0 ? (
                         <div className="space-y-3">
@@ -1499,7 +1499,7 @@ const AppShell: React.FC = () => {
                         <button
                           onClick={handleAddNote}
                           disabled={!newNoteContent.trim() || isAddingNote}
-                          className="px-4 py-2 bg-[#FF33E7] text-white rounded text-sm font-bold hover:bg-[#E62DD1] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 py-2 bg-accent text-white rounded text-sm font-bold hover:bg-[#E62DD1] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isAddingNote ? 'Đang thêm...' : 'Thêm ghi chú'}
                         </button>
@@ -1509,13 +1509,13 @@ const AppShell: React.FC = () => {
 
                   {selectedTask.imageUrls && selectedTask.imageUrls.length > 0 && (
                     <div className="space-y-4 md:space-y-6">
-                      <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#FF33E7] pl-4 md:pl-5">Hình ảnh đính kèm ({selectedTask.imageUrls.length})</h4>
+                      <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Hình ảnh đính kèm ({selectedTask.imageUrls.length})</h4>
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pl-4 md:pl-6">
                         {selectedTask.imageUrls.map((img, i) => (
                           <div
                             key={i}
                             onClick={() => setLightboxIndex(i)}
-                            className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-zoom-in hover:border-[#FF33E7] transition-all"
+                            className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-zoom-in hover:border-accent transition-all"
                           >
                             <img src={img} className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -1577,11 +1577,11 @@ const AppShell: React.FC = () => {
       )}
 
       {isEditTaskModalOpen && selectedTask && (
-        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-[500] flex flex-col bg-white modal-enter overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-16 md:inset-y-0 md:right-0 md:left-64 z-500 flex flex-col bg-white modal-enter overflow-hidden">
           <div className="h-14 md:h-16 px-4 md:px-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
               <button onClick={checkAndCloseEditTaskModal} className="p-2 -ml-2 text-slate-400 hover:text-slate-900"><ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" /></button>
-              <div className="hidden sm:block h-4 w-[1px] bg-slate-300 mx-2"></div>
+              <div className="hidden sm:block h-4 w-px bg-slate-300 mx-2"></div>
               <h2 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-[0.2em]">Chỉnh sửa công việc</h2>
             </div>
             <div className="flex items-center gap-1 md:gap-4">
@@ -1627,30 +1627,30 @@ const AppShell: React.FC = () => {
                     <input 
                       required 
                       name="title" 
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" 
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white text-3xl md:text-5xl font-black text-slate-900 leading-tight tracking-tight" 
                       placeholder="Tiêu đề công việc..." 
                       defaultValue={selectedTask.title}
                     />
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#8907E6] pl-4 md:pl-5">Nội dung yêu cầu</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-purple pl-4 md:pl-5">Nội dung yêu cầu</h4>
                     <textarea 
                       name="description" 
                       rows={8} 
-                      className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-[2] whitespace-pre-wrap" 
+                      className="w-full px-4 md:px-6 py-2.5 border border-slate-200 rounded text-sm md:text-base bg-white text-slate-600 leading-relaxed md:leading-loose whitespace-pre-wrap" 
                       placeholder="Chi tiết quy trình... (Có thể dán link: https://example.com)" 
                       defaultValue={selectedTask.description || ''}
                     />
                   </div>
 
                   <div className="space-y-4 md:space-y-6">
-                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-[#FF33E7] pl-4 md:pl-5">Hình ảnh đính kèm ({previewImages.length})</h4>
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-[0.3em] border-l-4 border-accent pl-4 md:pl-5">Hình ảnh đính kèm ({previewImages.length})</h4>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pl-4 md:pl-6">
                       {previewImages.map((img, i) => (
                         <div
                           key={i}
-                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-pointer hover:border-[#FF33E7] transition-all"
+                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-100 cursor-pointer hover:border-accent transition-all"
                         >
                           <img src={img} className="w-full h-full object-cover" />
                         <button
@@ -1662,7 +1662,7 @@ const AppShell: React.FC = () => {
                         </button>
                         </div>
                       ))}
-                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-[#FF33E7] hover:border-[#FF33E7] cursor-pointer transition-colors">
+                      <label className="aspect-square border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-accent hover:border-accent cursor-pointer transition-colors">
                         <PlusIcon className="w-5 h-5 md:w-6 md:h-6" />
                         <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
                       </label>
@@ -1729,16 +1729,16 @@ const AppShell: React.FC = () => {
                               required
                               name="startDate" 
                               type="date" 
-                              className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-slate-900 text-base md:text-lg" 
+                              className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white font-bold text-slate-900 text-base md:text-lg" 
                               defaultValue={selectedTask.startDate ? new Date(selectedTask.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                             />
-                          </div>
+            </div>
                           <div>
                             <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 md:mb-2 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> Ngày kết thúc (tùy chọn)</p>
                             <input 
                               name="deadline" 
                               type="date" 
-                              className="w-full px-4 py-2.5 border border-slate-200 rounded text-sm bg-white font-bold text-red-600 text-base md:text-lg" 
+                              className="w-full px-4 py-2.5 border border-slate-200 rounded bg-white font-bold text-red-600 text-base md:text-lg" 
                               defaultValue={selectedTask.deadline ? new Date(selectedTask.deadline).toISOString().split('T')[0] : ''}
                             />
                           </div>
@@ -1750,7 +1750,7 @@ const AppShell: React.FC = () => {
                       <button 
                         type="submit" 
                         disabled={isSubmitting}
-                        className="w-full py-3 md:py-4 bg-[#8907E6] text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60"
+                        className="w-full py-3 md:py-4 bg-purple text-white font-black text-[10px] md:text-sm rounded-xl shadow-lg hover:bg-[#7A06D1] transition-all flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-60"
                       >
                         {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật công việc'}
                       </button>
@@ -1764,10 +1764,10 @@ const AppShell: React.FC = () => {
       )}
 
       {lightboxIndex !== null && selectedTask?.imageUrls && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/95 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-600 flex items-center justify-center bg-black/95 backdrop-blur-md animate-in fade-in duration-300">
           <button
             onClick={() => setLightboxIndex(null)}
-            className="absolute top-4 right-4 md:top-8 md:right-8 z-[610] p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all"
+            className="absolute top-4 right-4 md:top-8 md:right-8 z-610 p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all"
           >
             <XMarkIcon className="w-6 h-6 md:w-8 md:h-8" />
           </button>
@@ -1794,7 +1794,7 @@ const AppShell: React.FC = () => {
             />
             <div className="absolute -bottom-10 md:-bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-4 text-white/60 font-black text-[10px] md:text-xs uppercase tracking-widest">
               <span>{lightboxIndex + 1}</span>
-              <div className="w-6 md:w-8 h-[1px] bg-white/20"></div>
+              <div className="w-6 md:w-8 h-px bg-white/20"></div>
               <span>{selectedTask.imageUrls.length}</span>
             </div>
           </div>
